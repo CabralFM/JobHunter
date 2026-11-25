@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from . import matcher, report
@@ -26,6 +27,27 @@ from .sources import build_sources
 from .tailor import tailor, verify
 
 log = logging.getLogger(__name__)
+
+
+def posted_date(value) -> date | None:
+    """Converte a data de publicação vinda de qualquer fonte ('2026-11-20', ISO com hora/fuso...)."""
+    if not value:
+        return None
+    s = str(value).strip().replace("Z", "+00:00")
+    for parse in (lambda x: datetime.fromisoformat(x).date(), lambda x: date.fromisoformat(x[:10])):
+        try:
+            return parse(s)
+        except ValueError:
+            continue
+    return None
+
+
+def too_old(posted_at, max_age_days: int | None, today: date | None = None) -> bool:
+    """True se o anúncio é mais velho que max_age_days. Data desconhecida = mantém."""
+    if not max_age_days:
+        return False
+    d = posted_date(posted_at)
+    return bool(d and d < (today or date.today()) - timedelta(days=max_age_days))
 
 
 class Pipeline:
@@ -53,9 +75,15 @@ class Pipeline:
 
         new_ids: list[int] = []
 
+        max_age = self.s["search"].get("max_age_days")
+        self.stats["too_old"] = 0
+
         def collect(src, term, location, country):
             for job in src.search(term, location, country):
                 if not job.title or not job.url:
+                    continue
+                if too_old(job.posted_at, max_age):
+                    self.stats["too_old"] += 1
                     continue
                 job_id, is_new = self.db.upsert_job(job)
                 if is_new:

@@ -21,6 +21,14 @@ def build_sources(settings: dict) -> list[Source]:
 
     out: list[Source] = []
     cfg = settings.get("sources", {})
+    # idade máxima do anúncio: os sites que aceitam filtro de data já buscam só nessa janela
+    # (LinkedIn, Indeed); para os demais o pipeline descarta os anúncios mais velhos.
+    max_age = (settings.get("search") or {}).get("max_age_days")
+    if max_age:
+        for key in ("jobspy", "linkedin"):
+            if key in cfg:
+                cfg[key] = {**cfg[key], "hours_old": int(max_age) * 24}
+        cfg["sites"] = {k: {**v, "max_age_days": int(max_age)} for k, v in (cfg.get("sites") or {}).items()}
     if cfg.get("jobspy", {}).get("enabled"):
         out.append(JobSpySource(cfg["jobspy"]))
     if cfg.get("linkedin", {}).get("enabled"):

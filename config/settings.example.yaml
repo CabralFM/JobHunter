@@ -5,6 +5,7 @@ candidates: [eu, esposa]          # nomes das pastas em config/candidates/
 data_dir: data
 
 search:
+  max_age_days: 7          # só anúncios publicados nos últimos 7 dias
   max_terms_per_candidate: 15
   locations:
     # Busca por PAÍS inteiro (name vazio). A prioridade da Suíça romanda é dada na nota de
@@ -20,7 +21,6 @@ sources:
     # parou de responder ao JobSpy (teste de 25.11.2026). Para religar: [linkedin, indeed, google]
     sites: [indeed]
     results_wanted: 50                  # por termo e país
-    hours_old: 48                       # roda diário, olha 2 dias para não perder nada
     linkedin_fetch_description: true    # mais lento, mas sem descrição não há match bom
     proxies: null
   linkedin:
@@ -28,7 +28,6 @@ sources:
     # houver APIFY_TOKEN no .env. Opcional: LINKEDIN_PROXY=http://usuario:senha@host:porta no .env.
     enabled: true
     max_pages: 2                    # 25 vagas por página, por termo e país
-    hours_old: 48
     delay_seconds: [2.0, 5.0]       # pausa aleatória entre pedidos (ritmo humano)
     backoff_seconds: [30, 90, 180]  # esperas antes de desistir quando o LinkedIn devolve 429
     max_details_per_run: 200        # descrições baixadas por execução
@@ -44,14 +43,15 @@ sources:
     # endereço, trocando o termo por {query}. link_regex: padrão do endereço dos anúncios.
     moovijob:
       enabled: true
-      search_url: "https://www.moovijob.com/offres-emploi?q={query}"
+      # índice com todos os anúncios + data; filtra pelos últimos max_age_days e pelo termo
+      sitemap_url: "https://www.moovijob.com/sitemap-joboffers"
       link_regex: "moovijob\\.com/offres-emploi/[^/?#]+/[^/?#]+$"
       countries: [LU]
       max_links_per_search: 30
     jobs_lu:
       enabled: true
-      search_url: "https://www.jobs.lu/en/jobs/?q={query}"
-      link_regex: "jobs\\.lu/.*(job|emploi|offre|stellen)[^?#]*[0-9]"
+      search_url: "https://en.jobs.lu/{query_slug}-jobs"   # ex.: en.jobs.lu/data-analyst-jobs
+      link_regex: "jobs\\.lu/[^?#]*[0-9]{5,}"           # anúncios têm um número longo no endereço (a confirmar)
       countries: [LU]
       max_links_per_search: 30
   jobs.ch:

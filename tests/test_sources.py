@@ -115,3 +115,45 @@ def test_apify_adaptive_fields_and_template():
         linkedin_search_url=apify_source.linkedin_search_url("SAP MM", "CH"))
     assert payload["q"] == 'SAP "MM"'
     assert "geoId=106693272" in payload["urls"][0] and "keywords=SAP+MM" in payload["urls"][0]
+
+
+SITEMAP_INDEX = """<?xml version="1.0"?><sitemapindex><sitemap><loc>https://www.moovijob.com/sitemap-joboffers-1.xml</loc></sitemap></sitemapindex>"""
+SITEMAP = """<?xml version="1.0"?><urlset>
+<url><loc>https://www.moovijob.com/offres-emploi/tmc-luxembourg/data-analyst-fh</loc><lastmod>2026-11-24</lastmod></url>
+<url><loc>https://www.moovijob.com/offres-emploi/luxsearch/analyste-donnees-industrielles-fr-3ca5c</loc><lastmod>2026-11-23T10:00:00+01:00</lastmod></url>
+<url><loc>https://www.moovijob.com/offres-emploi/old-co/data-analyst-old</loc><lastmod>2026-10-01</lastmod></url>
+<url><loc>https://www.moovijob.com/offres-emploi/x/sap-mm-consultant</loc><lastmod>2026-11-25</lastmod></url>
+</urlset>"""
+
+
+def test_jsonld_sitemap_mode(monkeypatch):
+    from datetime import date
+    import jobhunter.sources.jsonld as jl
+
+    class FakeDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 11, 25)
+    monkeypatch.setattr(jl, "date", FakeDate)
+    src = jl.JsonLdSiteSource("moovijob", {
+        "sitemap_url": "https://www.moovijob.com/sitemap-joboffers",
+        "link_regex": r"moovijob\.com/offres-emploi/[^/?#]+/[^/?#]+$", "countries": ["LU"], "max_age_days": 7})
+    pages = {"https://www.moovijob.com/sitemap-joboffers": SITEMAP_INDEX,
+             "https://www.moovijob.com/sitemap-joboffers-1.xml": SITEMAP}
+    fetched = []
+
+    def fake_get(url):
+        fetched.append(url)
+        return pages.get(url, JOB_PAGE)
+    monkeypatch.setattr(src, "_get", fake_get)
+    links, _ = src.candidate_links("data analyst")
+    assert links == ["https://www.moovijob.com/offres-emploi/tmc-luxembourg/data-analyst-fh"]  # antiga fora
+    links, _ = src.candidate_links("Analyste de données")
+    assert links == ["https://www.moovijob.com/offres-emploi/luxsearch/analyste-donnees-industrielles-fr-3ca5c"]
+    jobs = src.search("SAP MM", "", "LU")
+    assert len(jobs) == 1 and jobs[0].url.endswith("sap-mm-consultant")
+    assert fetched.count("https://www.moovijob.com/sitemap-joboffers-1.xml") == 1  # sitemap baixado 1 vez
+
+
+def test_jsonld_search_url_slug():
+    assert __import__("jobhunter.sources.jsonld", fromlist=["x"]).slugify("Data Analyst / BI") == "data-analyst-bi"

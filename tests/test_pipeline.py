@@ -187,3 +187,23 @@ def test_jobspy_country_search_passes_no_location(monkeypatch):
     jobs = JobSpySource({"sites": ["indeed"]}).search("data analyst", "", "LU")
     assert seen["location"] is None and seen["country_indeed"] == "luxembourg"
     assert jobs[0].location == "LU"
+
+
+def test_max_age_filter():
+    from datetime import date
+    today = date(2026, 11, 25)
+    assert pipeline.too_old("2026-11-17", 7, today) is True
+    assert pipeline.too_old("2026-11-18", 7, today) is False
+    assert pipeline.too_old("2026-11-20T09:15:00+01:00", 7, today) is False
+    assert pipeline.too_old("2026-11-01T00:00:00Z", 7, today) is True
+    assert pipeline.too_old(None, 7, today) is False           # data desconhecida: mantém
+    assert pipeline.too_old("há 3 dias", 7, today) is False     # ilegível: mantém
+    assert pipeline.too_old("2020-01-01", None, today) is False  # sem filtro
+
+
+def test_max_age_sets_source_windows():
+    from jobhunter.sources import build_sources
+    s = {"search": {"max_age_days": 7},
+         "sources": {"jobspy": {"enabled": True, "sites": ["indeed"]}, "linkedin": {"enabled": True}}}
+    srcs = {x.name: x for x in build_sources(s)}
+    assert srcs["jobspy"].hours_old == 168 and srcs["linkedin"].hours_old == 168

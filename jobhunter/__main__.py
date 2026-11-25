@@ -82,7 +82,7 @@ def main(argv=None):
 
     elif args.cmd == "probe":
         from .sources import build_sources
-        srcs = [s for s in build_sources(settings) if s.name == args.source or args.source == "jobspy"]
+        srcs = [s for s in build_sources(settings) if s.name == args.source]
         if not srcs:
             sys.exit(f"fonte {args.source} não está habilitada no settings.yaml")
         for s in srcs:

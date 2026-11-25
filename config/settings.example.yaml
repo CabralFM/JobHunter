@@ -23,7 +23,9 @@ search:
 sources:
   jobspy:
     enabled: true
-    sites: [linkedin, indeed, google]   # google = Google Jobs (agrega jobup, moovijob, jobs.lu...)
+    # LinkedIn bloqueia (erro 429) a busca sem login a partir de IPs residenciais, e o Google Jobs
+    # parou de responder ao JobSpy (teste de 25.11.2026). Para religar: [linkedin, indeed, google]
+    sites: [indeed]
     results_wanted: 20                  # por termo × local; LinkedIn limita (~10 páginas)
     hours_old: 48                       # roda diário, olha 2 dias para não perder nada
     linkedin_fetch_description: true    # mais lento, mas sem descrição não há match bom

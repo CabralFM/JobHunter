@@ -149,11 +149,18 @@ def main(argv=None):
             where, params = "job_id=? AND candidate=?", (args.job_id, args.candidate)
         else:
             where, params = "status='needs_review'", ()
+        # Apaga sem gravar (commit) ainda: se a API falhar (ex.: sem crédito), desfaz e a
+        # candidatura antiga continua lá, em vez de sumir.
         n = db.conn.execute(f"DELETE FROM applications WHERE {where}", params).rowcount
-        db.conn.commit()
-        print(f"{n} candidatura(s) removida(s); gerando de novo...")
+        print(f"{n} candidatura(s) a refazer; gerando de novo...")
         p = Pipeline(settings, db=db, sources=[])
-        p.tailor_and_apply()
+        try:
+            p.tailor_and_apply()
+        except Exception:
+            db.conn.rollback()
+            print("Falhou: nada foi apagado, a candidatura anterior continua como estava.")
+            raise
+        db.conn.commit()
         from . import report
         print(p.stats, report.build(db, data / "reports", since="2000-01-01"))
 
@@ -163,5 +170,16 @@ def main(argv=None):
         print(report.build(DB(data / "jobhunter.db"), data / "reports", since="2000-01-01"))
 
 
+def run_cli() -> None:
+    from .llm import FatalAPIError
+    try:
+        main()
+    except FatalAPIError as e:
+        # Erro de crédito/chave: mensagem curta em vez de um traceback de 40 linhas.
+        print(f"\nPARADO: {e}\nRecarregue o crédito em console.anthropic.com -> Billing e rode de novo.",
+              file=sys.stderr)
+        sys.exit(2)
+
+
 if __name__ == "__main__":
-    main()
+    run_cli()

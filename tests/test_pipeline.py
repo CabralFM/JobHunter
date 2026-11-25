@@ -55,7 +55,7 @@ def env(tmp_path, monkeypatch):
     root = tmp_path
     cand = root / "config" / "candidates" / "eu"
     shutil.copytree(Path(config.CONFIG_DIR) / "candidates" / "_exemplo", cand)
-    settings = yaml.safe_load((Path(config.CONFIG_DIR) / "settings.example.yaml").read_text())
+    settings = yaml.safe_load((Path(config.CONFIG_DIR) / "settings.example.yaml").read_text(encoding="utf-8"))
     settings["candidates"] = ["eu"]
     settings["search"]["locations"] = [{"name": "Lausanne", "country": "CH"}]
     monkeypatch.setattr(config, "CONFIG_DIR", root / "config")
@@ -85,7 +85,7 @@ def test_full_run(env):
     app = db.conn.execute("SELECT * FROM applications").fetchone()
     assert app["status"] == "drafted" and app["method"] == "email"
     assert Path(app["cv_path"]).exists()
-    assert report.exists() and "Banque Alpha" in report.read_text()
+    assert report.exists() and "Banque Alpha" in report.read_text(encoding="utf-8")
 
     # segunda execução não reprocessa nem duplica
     p.run()
@@ -115,10 +115,24 @@ def test_documents_language_policy():
 
 def test_load_dotenv(tmp_path, monkeypatch):
     from jobhunter.__main__ import load_dotenv
-    (tmp_path / ".env").write_text("# c\nJH_TEST_A=1\nJH_TEST_B=\"x y\"\nJH_TEST_EMPTY=\n")
+    (tmp_path / ".env").write_text("# c\nJH_TEST_A=1\nJH_TEST_B=\"x y\"\nJH_TEST_EMPTY=\n", encoding="utf-8")
     monkeypatch.delenv("JH_TEST_A", raising=False)
     monkeypatch.setenv("JH_TEST_B", "keep")
     load_dotenv(tmp_path / ".env")
     import os
     assert os.environ["JH_TEST_A"] == "1" and os.environ["JH_TEST_B"] == "keep"
     assert "JH_TEST_EMPTY" not in os.environ
+
+
+def test_search_terms_cache_utf8_and_corrupt(tmp_path, monkeypatch):
+    """No Windows a codificação padrão é cp1252; termos com '→' não podem quebrar a gravação,
+    e um cache corrompido por gravação interrompida deve ser regenerado."""
+    import locale
+    from jobhunter.config import Candidate
+    monkeypatch.setattr(locale, "getpreferredencoding", lambda *a, **k: "cp1252")
+    monkeypatch.setattr(query_expansion, "ask", lambda **k: query_expansion.SearchPlan(terms=[
+        query_expansion.SearchTerm(term="SAP MM", language="en", rationale="MM → S/4HANA")]))
+    c = Candidate("x", {}, "cv", "cv")
+    (tmp_path / "search_terms_x.json").write_text('{"fingerprint": "abc", "ter', encoding="utf-8")
+    assert query_expansion.build_terms(c, {}, tmp_path) == ["SAP MM"]
+    assert "→" in (tmp_path / "search_terms_x.json").read_text(encoding="utf-8")

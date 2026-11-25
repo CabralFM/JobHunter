@@ -57,6 +57,13 @@ def main(argv=None):
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     for noisy in ("httpx", "httpcore", "anthropic"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
+    # Windows: o console/arquivo de log pode estar em cp1252; nunca deixar um caractere
+    # como "→" ou "é" derrubar o programa.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
     load_dotenv(ROOT / ".env")
     settings = load_settings()
     data = ROOT / settings.get("data_dir", "data")

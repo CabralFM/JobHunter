@@ -44,8 +44,11 @@ def build_terms(cand: Candidate, step_cfg: dict, cache_dir: Path, max_terms: int
     fingerprint = hashlib.sha1((cand.master_cv + json.dumps(cand.profile, sort_keys=True)).encode()).hexdigest()
     cache = cache_dir / f"search_terms_{cand.id}.json"
     if cache.exists():
-        data = json.loads(cache.read_text())
-        if data.get("fingerprint") == fingerprint or data.get("locked"):
+        try:
+            data = json.loads(cache.read_text(encoding="utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            data = {}  # arquivo corrompido (ex.: gravação interrompida) -> gera de novo
+        if data.get("terms") and (data.get("fingerprint") == fingerprint or data.get("locked")):
             return data["terms"]
 
     manual = cand.profile.get("search", {}).get("extra_terms", [])
@@ -72,5 +75,6 @@ Regras:
     terms = list(dict.fromkeys(manual + [t.term for t in plan.terms]))
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache.write_text(json.dumps({"fingerprint": fingerprint, "locked": False, "terms": terms,
-                                 "details": [t.model_dump() for t in plan.terms]}, ensure_ascii=False, indent=2))
+                                 "details": [t.model_dump() for t in plan.terms]}, ensure_ascii=False, indent=2),
+                     encoding="utf-8")
     return terms

@@ -8,6 +8,7 @@
 # -WakeToRun acorda o PC da suspensão; -StartWhenAvailable roda depois se o PC estava desligado.
 
 Set-Location (Join-Path $PSScriptRoot "..")
+$env:PYTHONUTF8 = "1"   # arquivos e logs sempre em UTF-8 (o padrão do Windows é cp1252)
 New-Item -ItemType Directory -Force -Path data\logs | Out-Null
 if (Test-Path .env) {
   Get-Content .env | Where-Object { $_ -match '^\s*[^#].*=' } | ForEach-Object {

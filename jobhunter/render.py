@@ -25,7 +25,12 @@ def slug(s: str) -> str:
 
 def to_html(markdown_text: str, title: str) -> str:
     css = (TEMPLATES / "cv.css").read_text(encoding="utf-8")
-    body = md.markdown(markdown_text, extensions=["tables", "sane_lists"])
+    # Markdown "estrito" exige linha em branco antes de lista; LLMs e humanos costumam omitir,
+    # e a lista vira parágrafo corrido. Inserimos a linha em branco que falta.
+    markdown_text = re.sub(r"(?m)^(?![ \t]*[-*+] |[ \t]*\d+\. |\s*$)(.+)\n(?=[ \t]*([-*+]|\d+\.) )",
+                           r"\1\n\n", markdown_text)
+    # nl2br: quebras de linha simples (ex.: cabeçalho com telefone/e-mail) são respeitadas
+    body = md.markdown(markdown_text, extensions=["tables", "sane_lists", "nl2br"])
     return f"<!doctype html><html><head><meta charset='utf-8'><title>{title}</title>" \
            f"<style>{css}</style></head><body>{body}</body></html>"
 
@@ -44,7 +49,7 @@ def html_to_pdf(html: str, out: Path) -> bool:
             page = b.new_page()
             page.set_content(html, wait_until="load")
             page.pdf(path=str(out), format="A4", print_background=True,
-                     margin={"top": "14mm", "bottom": "14mm", "left": "14mm", "right": "14mm"})
+                     margin={"top": "12mm", "bottom": "12mm", "left": "12mm", "right": "12mm"})
             b.close()
         return True
     except Exception as e:

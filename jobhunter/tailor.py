@@ -48,6 +48,16 @@ Regras inegociáveis:
    "gestão de stakeholders" = "gestion des parties prenantes"), reescrever o resumo
    profissional, traduzir.
 3. Escreva tudo no idioma do documento indicado no pedido.
+5. NÃO calcule números novos: nada de "X anos de experiência em Y", totais ou somas de
+   períodos, a não ser que o número esteja escrito no perfil mestre/profile.yaml.
+6. NÃO atribua ao candidato competências comportamentais ou estilos de trabalho só porque o
+   anúncio pede (ex.: "influencing without authority", "thrives in ambiguity"). Use apenas os
+   que estiverem no perfil mestre.
+7. NÃO combine dois fatos separados num fato novo (ex.: "departamento de 40 pessoas" + "análises
+   AML" NÃO vira "departamento AML de 40 pessoas"). Cada fato como está escrito na fonte.
+8. Mobilidade/relocalização: use exatamente o que diz o profile.yaml (campo mobility).
+9. Lacunas reais: na carta, no máximo UMA frase curta e positiva (ex.: "I am ramping up on X"),
+   nunca um parágrafo listando o que falta.
 4. Título do CV (linha logo abaixo do nome): ajuste ao cargo da vaga quando o perfil mestre
    sustenta esse título (ex.: vaga "Data Governance Analyst" -> "Data Governance Analyst";
    "Analyste Risque de Crédit" -> título equivalente), mantendo o nível de senioridade real.

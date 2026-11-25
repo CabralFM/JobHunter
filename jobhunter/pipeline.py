@@ -68,10 +68,11 @@ class Pipeline:
         # fontes por cidade (LinkedIn/Indeed/Google): cidades secundárias usam menos termos
         for loc in locations:
             terms = terms_for(loc.get("max_terms"))
-            log.info("%s: %d termos", loc["name"], len(terms))
+            where = loc.get("name") or ""
+            log.info("%s: %d termos", where or f"país inteiro ({loc['country']})", len(terms))
             for term in terms:
                 for src in local_sources:
-                    collect(src, term, loc["name"], loc["country"])
+                    collect(src, term, where, loc["country"])
 
         # fontes nacionais (jobs.ch, jobup.ch): uma busca por termo e país, sem cidade
         for country in dict.fromkeys(loc["country"] for loc in locations):

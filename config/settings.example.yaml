@@ -7,18 +7,11 @@ data_dir: data
 search:
   max_terms_per_candidate: 15
   locations:
-    # O LinkedIn/Indeed buscam num raio de ~80 km (50 milhas) em volta da cidade, então
-    # Genève + Lausanne já cobrem quase toda a Suíça romanda (Nyon, Vevey, Fribourg, Neuchâtel).
-    # Cidades com max_terms usam só os N primeiros termos de cada pessoa (os mais centrais):
-    # menos buscas, menos bloqueio do LinkedIn, e a prioridade fica na Romandie.
-    - {name: "Genève", country: CH}
-    - {name: "Lausanne", country: CH}
-    - {name: "Bern", country: CH, max_terms: 6}
-    - {name: "Zürich", country: CH, max_terms: 6}
-    - {name: "Basel", country: CH, max_terms: 6}
-    - {name: "Lugano", country: CH, max_terms: 4}
-    # Luxemburgo
-    - {name: "Luxembourg", country: LU}
+    # Busca por PAÍS inteiro (name vazio). A prioridade da Suíça romanda é dada na nota de
+    # "desejo" (profile.yaml -> location_preference), não restringindo a busca.
+    # Para buscar por cidade: - {name: "Lausanne", country: CH}
+    - {name: "", country: CH}
+    - {name: "", country: LU}
 
 sources:
   jobspy:
@@ -26,7 +19,7 @@ sources:
     # LinkedIn bloqueia (erro 429) a busca sem login a partir de IPs residenciais, e o Google Jobs
     # parou de responder ao JobSpy (teste de 25.11.2026). Para religar: [linkedin, indeed, google]
     sites: [indeed]
-    results_wanted: 20                  # por termo × local; LinkedIn limita (~10 páginas)
+    results_wanted: 50                  # por termo e país
     hours_old: 48                       # roda diário, olha 2 dias para não perder nada
     linkedin_fetch_description: true    # mais lento, mas sem descrição não há match bom
     proxies: null

@@ -47,8 +47,8 @@ class JobSpySource(Source):
             df = scrape_jobs(
                 site_name=self.sites,
                 search_term=query,
-                google_search_term=f"{query} jobs near {location} since yesterday",
-                location=location,
+                google_search_term=f"{query} jobs near {location or country} since yesterday",
+                location=location or None,   # vazio = país inteiro (domínio ch./lu.indeed.com)
                 results_wanted=self.results_wanted,
                 hours_old=self.hours_old,
                 country_indeed=COUNTRY_INDEED.get(country, "switzerland"),
@@ -72,7 +72,7 @@ class JobSpySource(Source):
                     apply_email=(_s(r.get("emails")).split(",")[0] or None),
                     title=_s(r.get("title")),
                     company=_s(r.get("company")),
-                    location=_s(r.get("location")) or location,
+                    location=_s(r.get("location")) or location or country,
                     country=country,
                     description=_s(r.get("description")),
                     posted_at=_s(r.get("date_posted")) or None,

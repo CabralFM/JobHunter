@@ -169,3 +169,21 @@ def test_search_call_plan(env):
     assert len(local) == 3 + 1 + 3                     # Genève 3 termos, Zürich 1, Luxemburgo 3
     assert {(c[1], c[3]) for c in national} == {(t, cc) for t in ("t1", "t2", "t3") for cc in ("CH", "LU")}
     assert all(c[2] == "" for c in national)           # sem cidade
+
+
+def test_jobspy_country_search_passes_no_location(monkeypatch):
+    """Busca por país: a JobSpy recebe location=None (país inteiro no domínio ch./lu.indeed.com)."""
+    import pandas as pd
+    import jobspy
+    from jobhunter.sources.jobspy_source import JobSpySource
+    seen = {}
+
+    def fake_scrape(**kw):
+        seen.update(kw)
+        return pd.DataFrame([{"site": "indeed", "id": "1", "job_url": "u", "title": "Data Analyst",
+                              "company": "X", "location": None, "description": "d"}])
+
+    monkeypatch.setattr(jobspy, "scrape_jobs", fake_scrape)
+    jobs = JobSpySource({"sites": ["indeed"]}).search("data analyst", "", "LU")
+    assert seen["location"] is None and seen["country_indeed"] == "luxembourg"
+    assert jobs[0].location == "LU"

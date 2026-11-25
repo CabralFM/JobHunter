@@ -45,7 +45,7 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run"); r.add_argument("--no-search", action="store_true")
     sub.add_parser("terms")
-    p = sub.add_parser("probe"); p.add_argument("source"); p.add_argument("query"); p.add_argument("location")
+    p = sub.add_parser("probe"); p.add_argument("source"); p.add_argument("query"); p.add_argument("location", nargs="?", default="")
     p.add_argument("--country", default="CH")
     sub.add_parser("approve")
     f = sub.add_parser("feedback"); f.add_argument("job_id", type=int); f.add_argument("candidate")

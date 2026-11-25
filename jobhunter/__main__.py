@@ -2,6 +2,8 @@
 
     python -m jobhunter run              # pipeline completo (o que o agendador chama todo dia)
     python -m jobhunter run --no-search  # só reprocessa vagas já no banco
+    python -m jobhunter run --no-search --all             # esvazia a fila hoje (sem tetos)
+    python -m jobhunter run --max-triage 500 --max-assess 100   # tetos só nesta execução
     python -m jobhunter terms            # mostra/gera os termos de busca expandidos
     python -m jobhunter probe jobup.ch "chef de projet" Lausanne   # testa uma fonte
     python -m jobhunter approve          # revisa a fila: abre links/arquivos e marca status
@@ -46,6 +48,9 @@ def main(argv=None):
     ap.add_argument("-v", "--verbose", action="store_true")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run"); r.add_argument("--no-search", action="store_true")
+    r.add_argument("--max-triage", type=int, help="teto de triagens SÓ nesta execução (ex.: 500)")
+    r.add_argument("--max-assess", type=int, help="teto de análises detalhadas SÓ nesta execução")
+    r.add_argument("--all", action="store_true", help="processa a fila inteira hoje (sem tetos)")
     sub.add_parser("terms")
     p = sub.add_parser("probe"); p.add_argument("source"); p.add_argument("query"); p.add_argument("location", nargs="?", default="")
     p.add_argument("--country", default="CH")
@@ -73,6 +78,14 @@ def main(argv=None):
 
     if args.cmd == "run":
         from .pipeline import Pipeline
+        lim = dict(settings.get("limits") or {})
+        if args.all:
+            lim = {"max_triage_per_day": 10**9, "max_assess_per_day": 10**9}
+        if args.max_triage:
+            lim["max_triage_per_day"] = args.max_triage
+        if args.max_assess:
+            lim["max_assess_per_day"] = args.max_assess
+        settings["limits"] = lim
         print(Pipeline(settings).run(skip_search=args.no_search))
 
     elif args.cmd == "terms":

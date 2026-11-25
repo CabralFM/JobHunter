@@ -31,6 +31,9 @@ languages:               # nível CECR real — o matcher usa isto contra requis
   anglais: C1
   allemand: A2
 
+# Idioma do CV/carta por país: código (fr/en/de) fixa o idioma; "job" segue o idioma do anúncio.
+documents_language: {CH: fr, LU: job}
+
 workload: "80-100%"
 remote: "hybride ok"
 salary_min_chf: 110000   # anual bruto; vagas abaixo baixam o desire_fit

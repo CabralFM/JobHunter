@@ -76,8 +76,21 @@ Reformulações e traduções de fatos verdadeiros são aceitáveis. ok=true se 
 {master}"""
 
 
+def documents_language(job_row, cand: Candidate) -> str:
+    """Idioma do CV e da carta.
+
+    Padrão: o idioma do anúncio. O candidato pode fixar por país em profile.yaml, ex.:
+        documents_language: {CH: fr, LU: job}
+    ("job" = seguir o anúncio). Útil porque na Suíça romanda muitos recrutadores esperam o
+    dossier em francês mesmo quando o anúncio está em inglês.
+    """
+    job_lang = job_row["language"] if job_row["language"] in LANG_NAME else "fr"
+    policy = (cand.profile.get("documents_language") or {}).get(job_row["country"], "job")
+    return policy if policy in LANG_NAME else job_lang
+
+
 def tailor(job_row, cand: Candidate, assessment: MatchAssessment, step_cfg: dict) -> TailoredDocs:
-    lang = job_row["language"] if job_row["language"] in LANG_NAME else "fr"
+    lang = documents_language(job_row, cand)
     system = TAILOR_SYSTEM.format(
         conventions=CONVENTIONS,
         name=cand.name,

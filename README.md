@@ -146,7 +146,8 @@ perfil está bem descrito.
 ## 5. CV e carta adaptados (sem inventar nada)
 
 Para as melhores vagas `apply` (máx. 5 por pessoa por dia, configurável):
-1. **Adaptação** (`tailor.py`): o Claude reescreve o CV **no idioma da vaga** (FR/EN/DE), espelha
+1. **Adaptação** (`tailor.py`): o Claude reescreve o CV **no idioma da vaga** (FR/EN/DE) — ou no
+   idioma fixado por país em `profile.yaml` (`documents_language: {CH: fr, LU: job}`), espelha
    o vocabulário do anúncio quando corresponde a algo real, reordena experiências e escreve a
    *lettre de motivation* no formato suíço (vous → moi → nous) ou luxemburguês.
    Convenções embutidas: CV de 2 páginas, nacionalidade/permis no cabeçalho, idiomas em CECR,

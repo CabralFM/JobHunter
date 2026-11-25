@@ -12,6 +12,13 @@ search:
     - {name: "Lausanne", country: CH}
     - {name: "Neuchâtel", country: CH}
     - {name: "Fribourg", country: CH}
+    - {name: "Sion", country: CH}
+    # Resto da Suíça (opcional; a prioridade da Romandie fica em profile.yaml -> location_preference)
+    # - {name: "Zürich", country: CH}
+    # - {name: "Zug", country: CH}
+    # - {name: "Basel", country: CH}
+    # - {name: "Bern", country: CH}
+    # - {name: "Lugano", country: CH}
     # Luxemburgo
     - {name: "Luxembourg", country: LU}
 

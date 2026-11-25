@@ -102,3 +102,12 @@ def test_score_and_decide():
     assert matcher.decide(40, 80, 50, [], th)[0] == "review"    # sabe fazer, mas não quer tanto
     assert matcher.decide(40, 80, 70, [], th)[0] == "apply"
     assert matcher.decide(40, 80, 70, ["allemand C1"], th)[0] == "knockout"
+
+
+def test_documents_language_policy():
+    from jobhunter.config import Candidate
+    c = Candidate("eu", {"documents_language": {"CH": "fr", "LU": "job"}}, "", "")
+    assert tailor.documents_language({"language": "en", "country": "CH"}, c) == "fr"
+    assert tailor.documents_language({"language": "en", "country": "LU"}, c) == "en"
+    assert tailor.documents_language({"language": "de", "country": "CH"},
+                                     Candidate("x", {}, "", "")) == "de"

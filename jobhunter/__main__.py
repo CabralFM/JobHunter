@@ -7,6 +7,8 @@
     python -m jobhunter approve          # revisa a fila: abre links/arquivos e marca status
     python -m jobhunter feedback 123 eu good   # calibração: essa vaga era boa/ruim para você
     python -m jobhunter report           # regenera o relatório do dia
+    python -m jobhunter retailor         # refaz CV/carta das candidaturas "needs_review"
+    python -m jobhunter retailor 123 eu  # refaz uma candidatura específica
 """
 
 from __future__ import annotations
@@ -51,6 +53,7 @@ def main(argv=None):
     f = sub.add_parser("feedback"); f.add_argument("job_id", type=int); f.add_argument("candidate")
     f.add_argument("verdict", choices=["good", "bad"])
     sub.add_parser("report")
+    rt = sub.add_parser("retailor"); rt.add_argument("job_id", type=int, nargs="?"); rt.add_argument("candidate", nargs="?")
     args = ap.parse_args(argv)
 
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
@@ -124,6 +127,22 @@ def main(argv=None):
                         (args.verdict, args.job_id, args.candidate))
         db.conn.commit()
         print("ok")
+
+    elif args.cmd == "retailor":
+        from .db import DB
+        from .pipeline import Pipeline
+        db = DB(data / "jobhunter.db")
+        if args.job_id:
+            where, params = "job_id=? AND candidate=?", (args.job_id, args.candidate)
+        else:
+            where, params = "status='needs_review'", ()
+        n = db.conn.execute(f"DELETE FROM applications WHERE {where}", params).rowcount
+        db.conn.commit()
+        print(f"{n} candidatura(s) removida(s); gerando de novo...")
+        p = Pipeline(settings, db=db, sources=[])
+        p.tailor_and_apply()
+        from . import report
+        print(p.stats, report.build(db, data / "reports", since="2000-01-01"))
 
     elif args.cmd == "report":
         from . import report

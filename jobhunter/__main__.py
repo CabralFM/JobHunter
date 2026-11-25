@@ -14,11 +14,29 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 import webbrowser
 from pathlib import Path
 
 from .config import ROOT, load_candidates, load_settings
+
+
+def load_dotenv(path: Path) -> None:
+    """Lê KEY=valor do arquivo .env (sem sobrescrever variáveis já definidas no sistema).
+
+    Assim não é preciso exportar a chave da API manualmente no terminal (útil no Windows).
+    """
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        value = value.strip().strip('"').strip("'")
+        if value:
+            os.environ.setdefault(key.strip(), value)
 
 
 def main(argv=None):
@@ -39,6 +57,7 @@ def main(argv=None):
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     for noisy in ("httpx", "httpcore", "anthropic"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
+    load_dotenv(ROOT / ".env")
     settings = load_settings()
     data = ROOT / settings.get("data_dir", "data")
 

@@ -111,3 +111,14 @@ def test_documents_language_policy():
     assert tailor.documents_language({"language": "en", "country": "LU"}, c) == "en"
     assert tailor.documents_language({"language": "de", "country": "CH"},
                                      Candidate("x", {}, "", "")) == "de"
+
+
+def test_load_dotenv(tmp_path, monkeypatch):
+    from jobhunter.__main__ import load_dotenv
+    (tmp_path / ".env").write_text("# c\nJH_TEST_A=1\nJH_TEST_B=\"x y\"\nJH_TEST_EMPTY=\n")
+    monkeypatch.delenv("JH_TEST_A", raising=False)
+    monkeypatch.setenv("JH_TEST_B", "keep")
+    load_dotenv(tmp_path / ".env")
+    import os
+    assert os.environ["JH_TEST_A"] == "1" and os.environ["JH_TEST_B"] == "keep"
+    assert "JH_TEST_EMPTY" not in os.environ

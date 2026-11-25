@@ -199,7 +199,7 @@ cp -r config/candidates/_exemplo config/candidates/eu
 cp -r config/candidates/_exemplo config/candidates/esposa
 # ... preencha os 3 arquivos de cada um (§4) ...
 
-set -a; source .env; set +a
+# (o programa lê o .env sozinho)
 python -m jobhunter terms                               # revise os termos de busca
 python -m jobhunter probe jobup.ch "chef de projet" Lausanne   # confirma que a fonte funciona
 python -m jobhunter probe jobspy "chef de projet" Lausanne

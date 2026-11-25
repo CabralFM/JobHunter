@@ -42,7 +42,7 @@ Reescreve CVs e cartas a partir de um PERFIL MESTRE, que é a única fonte da ve
 Regras inegociáveis:
 1. Nunca invente empresas, cargos, datas, diplomas, certificações, números, ferramentas ou
    níveis de idioma. Se algo pedido na vaga não está no perfil mestre, NÃO coloque no CV;
-   na carta, no máximo mencione disposição/rapidez para aprender, sem fingir experiência.
+   nem na carta (não mencione a ausência; ver regra 9).
 2. Você PODE: reordenar seções, escolher quais experiências e realizações destacar,
    renomear competências com o vocabulário do anúncio quando forem a mesma coisa (ex.:
    "gestão de stakeholders" = "gestion des parties prenantes"), reescrever o resumo
@@ -56,8 +56,9 @@ Regras inegociáveis:
 7. NÃO combine dois fatos separados num fato novo (ex.: "departamento de 40 pessoas" + "análises
    AML" NÃO vira "departamento AML de 40 pessoas"). Cada fato como está escrito na fonte.
 8. Mobilidade/relocalização: use exatamente o que diz o profile.yaml (campo mobility).
-9. Lacunas reais: na carta, no máximo UMA frase curta e positiva (ex.: "I am ramping up on X"),
-   nunca um parágrafo listando o que falta.
+9. Lacunas reais: NUNCA mencioná-las, nem no CV nem na carta (nada de "ainda não trabalhei
+   com X", "estou aprendendo X", "ramping up on X"). A carta fala só do que o candidato tem e
+   faz; o que falta simplesmente não aparece. (Continua proibido inventar o que falta.)
 4. Título do CV (linha logo abaixo do nome): ajuste ao cargo da vaga quando o perfil mestre
    sustenta esse título (ex.: vaga "Data Governance Analyst" -> "Data Governance Analyst";
    "Analyste Risque de Crédit" -> título equivalente), mantendo o nível de senioridade real.
@@ -133,7 +134,7 @@ def tailor(job_row, cand: Candidate, assessment: MatchAssessment, step_cfg: dict
 ## Análise de aderência já feita
 - Lacunas resolvíveis com reescrita: {assessment.gaps_fixable_by_tailoring}
 - Palavras-chave a espelhar (somente se verdadeiras): {assessment.keywords_to_mirror}
-- Lacunas reais (NÃO esconder com invenção): {assessment.real_gaps}
+- Lacunas reais (NÃO mencionar e NÃO inventar; apenas não falar delas): {assessment.real_gaps}
 
 ## Vaga
 Título: {job_row['title']}

@@ -27,12 +27,15 @@ LANG_NAME = {"fr": "français", "en": "English", "de": "Deutsch"}
 CONVENTIONS = """Convenções do mercado (aplique conforme o país da vaga):
 - Suíça: CV de 2 páginas no máximo; cabeçalho com nacionalidade e tipo de permis de travail
   (ou "UE/AELE – libre circulation" / "permis B/C/G"), idiomas com nível CECR (A1–C2), taxa de
-  ocupação disponível. Foto é comum mas opcional (não gere foto). Datas no formato MM.AAAA.
+  ocupação disponível (SÓ na Suíça). Foto é comum mas opcional (não gere foto). Datas no formato MM.AAAA.
   "Lettre de motivation" formal: local e data no topo direito, "Madame, Monsieur," se não houver
   nome, 3–4 parágrafos (vous → moi → nous → conclusão), fecho "Je vous prie d'agréer, Madame,
   Monsieur, mes salutations distinguées."
 - Luxemburgo: multilíngue (FR/EN/DE/LU) — destaque idiomas; CV de 1–2 páginas; carta mais
-  direta, especialmente em EN para finanças/Big4/instituições europeias.
+  direta, especialmente em EN para finanças/Big4/instituições europeias. NÃO coloque taxa de
+  ocupação (80–100%) fora da Suíça: lá soa como pedido de tempo parcial.
+- Sempre: CV de no máximo 2 páginas; cada informação aparece UMA vez (idiomas só numa seção;
+  não repita as mesmas competências em "Core strengths" e "Skills").
 - Sempre: resultados quantificados quando o perfil mestre tiver números; verbos de ação;
   palavras-chave do anúncio usadas literalmente quando correspondem a algo verdadeiro (ATS)."""
 
@@ -55,7 +58,9 @@ Regras inegociáveis:
    que estiverem no perfil mestre.
 7. NÃO combine dois fatos separados num fato novo (ex.: "departamento de 40 pessoas" + "análises
    AML" NÃO vira "departamento AML de 40 pessoas"). Cada fato como está escrito na fonte.
-8. Mobilidade/relocalização: use exatamente o que diz o profile.yaml (campo mobility).
+8. Mobilidade/relocalização: use EXATAMENTE a frase "Mobilidade para esta vaga" indicada no
+   pedido (traduzida para o idioma do documento), no CV e na carta. Nunca diga a um empregador
+   que outro país é a sua prioridade (ex.: numa vaga em Luxemburgo não fale da Suíça romanda).
 9. Lacunas reais: NUNCA mencioná-las, nem no CV nem na carta (nada de "ainda não trabalhei
    com X", "estou aprendendo X", "ramping up on X"). A carta fala só do que o candidato tem e
    faz; o que falta simplesmente não aparece. (Continua proibido inventar o que falta.)
@@ -118,6 +123,21 @@ def documents_language(job_row, cand: Candidate) -> str:
     return policy if policy in LANG_NAME else job_lang
 
 
+def mobility_for(job_row, cand: Candidate) -> str:
+    """Frase de mobilidade para o país da vaga.
+
+    profile.yaml aceita um texto único ou um texto por país, ex.:
+        mobility:
+          CH: "Disponible pour une relocalisation immédiate en Suisse (priorité Suisse romande)"
+          LU: "Available for immediate relocation to Luxembourg"
+    Assim uma vaga em Luxemburgo nunca recebe "prioridade: Suíça romanda".
+    """
+    m = cand.profile.get("mobility") or ""
+    if isinstance(m, dict):
+        return m.get(job_row["country"]) or m.get("default") or next(iter(m.values()), "")
+    return m
+
+
 def tailor(job_row, cand: Candidate, assessment: MatchAssessment, step_cfg: dict) -> TailoredDocs:
     lang = documents_language(job_row, cand)
     system = TAILOR_SYSTEM.format(
@@ -130,6 +150,7 @@ def tailor(job_row, cand: Candidate, assessment: MatchAssessment, step_cfg: dict
     return ask(
         system=system,
         user=f"""Adapte o CV e escreva a carta para esta vaga. Idioma: {LANG_NAME[lang]}.
+Mobilidade para esta vaga: {mobility_for(job_row, cand)}
 
 ## Análise de aderência já feita
 - Lacunas resolvíveis com reescrita: {assessment.gaps_fixable_by_tailoring}

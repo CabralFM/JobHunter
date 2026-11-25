@@ -262,3 +262,14 @@ def test_fatal_api_error_stops_run(env, monkeypatch):
     p = pipeline.Pipeline(settings, sources=[FakeSource()])
     p.run()
     assert len(calls) == 1 and "aborted" in p.stats
+
+
+def test_mobility_per_country():
+    from types import SimpleNamespace
+    from jobhunter.tailor import mobility_for
+    cand = SimpleNamespace(profile={"mobility": {"CH": "Suisse romande", "LU": "Luxembourg"}})
+    assert mobility_for({"country": "LU"}, cand) == "Luxembourg"
+    assert mobility_for({"country": "CH"}, cand) == "Suisse romande"
+    assert mobility_for({"country": "FR"}, cand) == "Suisse romande"   # sem chave: primeira
+    cand2 = SimpleNamespace(profile={"mobility": "texto único"})
+    assert mobility_for({"country": "LU"}, cand2) == "texto único"

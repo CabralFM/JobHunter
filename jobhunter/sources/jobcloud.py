@@ -41,13 +41,16 @@ DEFAULTS = {
 
 
 class JobCloudSource(Source):
+    national = True
+
     def __init__(self, site: str, cfg: dict):
         self.name = site
+        self.known_ids = set()
         self.urls = {**DEFAULTS[site], **{k: v for k, v in cfg.items() if k.endswith("_url")}}
-        self.rows = cfg.get("rows", 40)
-        self.max_pages = cfg.get("max_pages", 2)
+        self.rows = cfg.get("rows", 20)
+        self.max_pages = cfg.get("max_pages", 1)
         self.fetch_details = cfg.get("fetch_details", True)
-        self.delay = cfg.get("delay_seconds", 1.5)  # educação com o servidor
+        self.delay = cfg.get("delay_seconds", 0.7)  # educação com o servidor
         self.http = httpx.Client(
             timeout=30,
             headers={"User-Agent": "Mozilla/5.0 (job-hunter personal use)", "Accept": "application/json"},
@@ -68,14 +71,17 @@ class JobCloudSource(Source):
             return []
         jobs: list[Job] = []
         for page in range(1, self.max_pages + 1):
-            data = self._get(self.urls["search_url"], query=query, location=location, page=page, rows=self.rows)
+            params = dict(query=query, page=page, rows=self.rows)
+            if location:
+                params["location"] = location
+            data = self._get(self.urls["search_url"], **params)
             docs = (data or {}).get("documents") or (data or {}).get("results") or []
             if not docs:
                 break
             for d in docs:
                 jid = str(d.get("job_id") or d.get("id") or "")
-                if not jid:
-                    continue
+                if not jid or jid in self.known_ids:
+                    continue  # já está no banco: não baixa o detalhe de novo
                 desc = ""
                 if self.fetch_details:
                     time.sleep(self.delay)

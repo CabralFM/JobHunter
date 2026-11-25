@@ -136,3 +136,36 @@ def test_search_terms_cache_utf8_and_corrupt(tmp_path, monkeypatch):
     (tmp_path / "search_terms_x.json").write_text('{"fingerprint": "abc", "ter', encoding="utf-8")
     assert query_expansion.build_terms(c, {}, tmp_path) == ["SAP MM"]
     assert "→" in (tmp_path / "search_terms_x.json").read_text(encoding="utf-8")
+
+
+def test_search_call_plan(env):
+    """Fontes nacionais: 1 busca por termo e país. Cidades com max_terms usam só os primeiros termos."""
+    root, settings = env
+    calls = []
+
+    class Spy(Source):
+        def __init__(self, name, national):
+            self.name, self.national = name, national
+
+        def search(self, query, location, country):
+            calls.append((self.name, query, location, country))
+            return []
+
+    settings["search"]["locations"] = [
+        {"name": "Genève", "country": "CH"},
+        {"name": "Zürich", "country": "CH", "max_terms": 1},
+        {"name": "Luxembourg", "country": "LU"},
+    ]
+    p = pipeline.Pipeline(settings, sources=[Spy("local", False), Spy("jobup.ch", True)])
+    import jobhunter.pipeline as pl
+    orig = pl.build_terms
+    pl.build_terms = lambda c, cfg, d, n=15: ["t1", "t2", "t3"]
+    try:
+        p.search()
+    finally:
+        pl.build_terms = orig
+    local = [c for c in calls if c[0] == "local"]
+    national = [c for c in calls if c[0] == "jobup.ch"]
+    assert len(local) == 3 + 1 + 3                     # Genève 3 termos, Zürich 1, Luxemburgo 3
+    assert {(c[1], c[3]) for c in national} == {(t, cc) for t in ("t1", "t2", "t3") for cc in ("CH", "LU")}
+    assert all(c[2] == "" for c in national)           # sem cidade

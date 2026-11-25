@@ -40,22 +40,44 @@ class Pipeline:
 
     # ---------- 1. busca ----------
     def search(self) -> list[int]:
-        terms: list[str] = []
-        for c in self.candidates:
-            terms += build_terms(c, self.llm["expand"], self.data, self.s["search"].get("max_terms_per_candidate", 15))
-        terms = list(dict.fromkeys(terms))
-        log.info("%d termos de busca: %s", len(terms), terms)
+        per_cand = [build_terms(c, self.llm["expand"], self.data,
+                                self.s["search"].get("max_terms_per_candidate", 15)) for c in self.candidates]
+
+        def terms_for(limit: int | None) -> list[str]:
+            """Os `limit` primeiros termos de CADA candidato (os mais centrais vêm primeiro)."""
+            return list(dict.fromkeys(t for ts in per_cand for t in (ts[:limit] if limit else ts)))
+
+        for src in self.sources:
+            src.known_ids = {r[0] for r in self.db.conn.execute(
+                "SELECT external_id FROM jobs WHERE source=?", (src.name,))}
 
         new_ids: list[int] = []
-        for loc in self.s["search"]["locations"]:
+
+        def collect(src, term, location, country):
+            for job in src.search(term, location, country):
+                if not job.title or not job.url:
+                    continue
+                job_id, is_new = self.db.upsert_job(job)
+                if is_new:
+                    new_ids.append(job_id)
+
+        locations = self.s["search"]["locations"]
+        local_sources = [s for s in self.sources if not s.national]
+        national_sources = [s for s in self.sources if s.national]
+
+        # fontes por cidade (LinkedIn/Indeed/Google): cidades secundárias usam menos termos
+        for loc in locations:
+            terms = terms_for(loc.get("max_terms"))
+            log.info("%s: %d termos", loc["name"], len(terms))
             for term in terms:
-                for src in self.sources:
-                    for job in src.search(term, loc["name"], loc["country"]):
-                        if not job.title or not job.url:
-                            continue
-                        job_id, is_new = self.db.upsert_job(job)
-                        if is_new:
-                            new_ids.append(job_id)
+                for src in local_sources:
+                    collect(src, term, loc["name"], loc["country"])
+
+        # fontes nacionais (jobs.ch, jobup.ch): uma busca por termo e país, sem cidade
+        for country in dict.fromkeys(loc["country"] for loc in locations):
+            for term in terms_for(None):
+                for src in national_sources:
+                    collect(src, term, "", country)
         self.stats["new_jobs"] = len(new_ids)
         log.info("%d vagas novas", len(new_ids))
         return new_ids

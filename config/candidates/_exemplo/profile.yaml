@@ -1,0 +1,45 @@
+# O QUE O CANDIDATO PROCURA. É isto que separa "sei fazer" de "quero fazer".
+# Preencha com calma — é a parte mais importante do sistema (ver README, "Definindo o que procuramos").
+
+name: "Nome Sobrenome"
+contact:
+  email: "nome@exemplo.com"
+  phone: "+41 00 000 00 00"
+  city: "Lausanne"
+  linkedin: "linkedin.com/in/..."
+nationality: "Brasileira / Portuguesa"     # relevante: UE/AELE = livre circulação na CH e LU
+work_permit: "UE/AELE – libre circulation" # ou "permis B", "permis G", "nécessite un permis"...
+
+summary: >
+  2-4 frases sobre quem você é profissionalmente e para onde quer ir. Ex.: "Gerente de projetos
+  de TI com 10 anos em bancos, quer evoluir para Product Owner/PMO em finanças ou setor público."
+
+years_experience: 10
+target_roles:            # cargos que você QUER (o sistema também busca cargos adjacentes)
+  - "Chef de projet IT"
+  - "Product Owner"
+acceptable_roles:        # aceitaria, mas com menos entusiasmo
+  - "Business Analyst"
+seniority: [mid, senior]
+sectors_preferred: ["banque", "assurance", "organisations internationales", "secteur public"]
+sectors_avoid: []
+company_types: ["grande entreprise", "PME", "ONG internationale"]
+
+languages:               # nível CECR real — o matcher usa isto contra requisitos da vaga
+  portugais: C2
+  français: C1
+  anglais: C1
+  allemand: A2
+
+workload: "80-100%"
+remote: "hybride ok"
+salary_min_chf: 110000   # anual bruto; vagas abaixo baixam o desire_fit
+salary_min_eur: 85000
+contract: ["CDI", "CDD > 12 mois"]
+
+dealbreakers:            # o que você NÃO quer de jeito nenhum
+  - "vendas com comissão"
+  - "deslocamentos > 30%"
+
+search:
+  extra_terms: []        # termos que você quer buscar SEMPRE, além dos gerados

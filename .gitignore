@@ -1,0 +1,13 @@
+# dados pessoais e resultados — NÃO vão para o GitHub
+data/*
+.env
+config/settings.yaml
+config/candidates/*
+!config/candidates/_exemplo/
+
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+!data/.gitkeep

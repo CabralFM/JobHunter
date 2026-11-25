@@ -1,0 +1,91 @@
+# Copie para config/settings.yaml e ajuste. Segredos NUNCA aqui: use variáveis de ambiente
+# (ANTHROPIC_API_KEY, APIFY_TOKEN, SMTP_PASSWORD) — ver .env.example.
+
+candidates: [eu, esposa]          # nomes das pastas em config/candidates/
+data_dir: data
+
+search:
+  max_terms_per_candidate: 15
+  locations:
+    # Suíça romanda — cada local é buscado com cada termo em cada fonte
+    - {name: "Genève", country: CH}
+    - {name: "Lausanne", country: CH}
+    - {name: "Neuchâtel", country: CH}
+    - {name: "Fribourg", country: CH}
+    # Luxemburgo
+    - {name: "Luxembourg", country: LU}
+
+sources:
+  jobspy:
+    enabled: true
+    sites: [linkedin, indeed, google]   # google = Google Jobs (agrega jobup, moovijob, jobs.lu...)
+    results_wanted: 25                  # por termo × local; LinkedIn limita (~10 páginas)
+    hours_old: 48                       # roda diário, olha 2 dias para não perder nada
+    linkedin_fetch_description: true    # mais lento, mas sem descrição não há match bom
+    proxies: null
+  jobs.ch:
+    enabled: true
+    rows: 40
+    max_pages: 2
+    delay_seconds: 1.5
+  jobup.ch:
+    enabled: true
+    rows: 40
+    max_pages: 2
+    delay_seconds: 1.5
+  apify:                                # opcional: precisa de APIFY_TOKEN
+    moovijob:
+      enabled: false
+      actor: "ESCOLHA-NO-APIFY-STORE/moovijob-scraper"
+      input_template: {"keyword": "{query}", "location": "{location}", "maxItems": 50}
+      field_map: {title: title, company: company, url: url, description: description, location: location}
+      countries: [LU]
+    jobs_lu:
+      enabled: false
+      actor: "ESCOLHA-NO-APIFY-STORE/jobs-lu-scraper"
+      input_template: {"query": "{query}", "maxItems": 50}
+      field_map: {title: title, company: company, url: url, description: description, location: location}
+      countries: [LU]
+
+prefilter:
+  min_description_chars: 200
+  exclude_title_patterns:            # regex, sem LLM, custo zero
+    - "\\b(stagiaire|stage|internship|praktikum|apprenti|lehrstelle|werkstudent)\\b"
+
+# Pesos das dimensões (soma = 1). Ajuste depois de 2 semanas olhando o feedback.
+weights:
+  hard_skills: 0.30
+  experience: 0.20
+  domain: 0.15
+  languages: 0.15
+  location_permit: 0.10
+  education: 0.10
+
+thresholds:
+  apply_min_potential: 72   # gera CV/carta e põe na fila (ou envia, no modo email)
+  apply_min_desire: 60      # e a vaga tem que ser algo que você QUER
+  review_min_potential: 58  # aparece no relatório para você decidir
+
+limits:                       # teto de custo: o que passar fica para o dia seguinte
+  max_triage_per_day: 300
+  max_assess_per_day: 120
+
+llm:
+  # Todas as etapas usam o Claude Opus 5.5 por padrão. Para baratear a triagem (a etapa de
+  # maior volume), troque o modelo dela por "claude-haiku-5-5".
+  expand: {model: claude-opus-5-5, effort: high}
+  triage: {model: claude-opus-5-5, effort: low}
+  assess: {model: claude-opus-5-5, effort: medium}
+  tailor: {model: claude-opus-5-5, effort: high}
+  verify: {model: claude-opus-5-5, effort: medium}
+
+apply:
+  mode: queue                     # queue | email
+  dry_run: true                   # no modo email: true = só simula (comece assim!)
+  max_per_candidate_per_day: 5    # qualidade > quantidade
+  smtp:
+    host: smtp.gmail.com          # Gmail: use "senha de app", não a senha normal
+    port: 587
+    from: "seu.email@exemplo.com"
+    password_env: SMTP_PASSWORD
+    bcc_self: true

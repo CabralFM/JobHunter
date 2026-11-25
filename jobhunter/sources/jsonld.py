@@ -168,7 +168,7 @@ class JsonLdSiteSource(Source):
             r = self.session().get(url, timeout=30)
             if r.status_code == 200:
                 return r.text
-            log.warning("%s: HTTP %s em %s", self.name, r.status_code, url)
+            (log.debug if r.status_code == 404 else log.warning)("%s: HTTP %s em %s", self.name, r.status_code, url)
         except Exception as e:
             log.warning("%s: erro em %s: %s", self.name, url, e)
         return ""

@@ -207,3 +207,18 @@ def test_max_age_sets_source_windows():
          "sources": {"jobspy": {"enabled": True, "sites": ["indeed"]}, "linkedin": {"enabled": True}}}
     srcs = {x.name: x for x in build_sources(s)}
     assert srcs["jobspy"].hours_old == 168 and srcs["linkedin"].hours_old == 168
+
+
+def test_prioritize_romandie_and_title_first(env):
+    import json as _json
+    root, settings = env
+    p = pipeline.Pipeline(settings, sources=[])
+    p.data.mkdir(parents=True, exist_ok=True)
+    (p.data / "search_terms_eu.json").write_text(_json.dumps({"terms": ["Data Analyst"]}), encoding="utf-8")
+    rows = [
+        {"id": 1, "title": "Data Analyst", "location": "Luxembourg", "country": "LU", "posted_at": "2026-11-25"},
+        {"id": 2, "title": "Infirmier", "location": "Lausanne, Vaud", "country": "CH", "posted_at": "2026-11-25"},
+        {"id": 3, "title": "Senior Data Analyst", "location": "Genève, Suisse", "country": "CH", "posted_at": "2026-11-20"},
+        {"id": 4, "title": "Data Analyst", "location": "Zürich", "country": "CH", "posted_at": "2026-11-24"},
+    ]
+    assert p.prioritize(rows) == [3, 4, 1, 2]

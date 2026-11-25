@@ -29,6 +29,18 @@ from .tailor import tailor, verify
 log = logging.getLogger(__name__)
 
 
+ROMANDIE = re.compile(
+    r"\b(geneve|geneva|genf|ge|vaud|vd|lausanne|neuchatel|ne|fribourg|freiburg|fr|valais|vs|sion|"
+    r"jura|delemont|nyon|morges|vevey|montreux|yverdon|renens|pully|prilly|ecublens|gland|rolle|"
+    r"plan-les-ouates|carouge|meyrin|vernier|lancy|onex|bulle|villars-sur-glane|martigny|monthey|"
+    r"la chaux-de-fonds|bienne|biel)\b")
+
+
+def _fold(text: str) -> str:
+    import unicodedata
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().lower()
+
+
 def posted_date(value) -> date | None:
     """Converte a data de publicação vinda de qualquer fonte ('2026-11-20', ISO com hora/fuso...)."""
     if not value:
@@ -124,6 +136,33 @@ class Pipeline:
         self.stats["new_jobs"] = len(new_ids)
         log.info("%d vagas novas", len(new_ids))
         return new_ids
+
+    # ---------- ordem da triagem ----------
+    def prioritize(self, rows) -> list[int]:
+        """Com o teto diário de chamadas, a ORDEM importa: avalia primeiro o que mais provavelmente
+        interessa. Sem LLM, custo zero:
+          +3 título contém um termo de busca de algum candidato (ex.: "Data Analyst", "SAP MM")
+          +2 Suíça romanda (cantões/cidades francófonos)   +1 Suíça (outras regiões)
+          desempate: anúncio mais recente primeiro.
+        """
+        terms = set()
+        for c in self.candidates:
+            cache = self.data / f"search_terms_{c.id}.json"
+            try:
+                terms |= {_fold(t) for t in json.loads(cache.read_text(encoding="utf-8"))["terms"]}
+            except (OSError, ValueError, KeyError):
+                pass
+            terms |= {_fold(t) for t in (c.profile.get("search") or {}).get("extra_terms", [])}
+
+        def score(r):
+            title, loc = _fold(r["title"] or ""), _fold(r["location"] or "")
+            s = 3 if any(t and t in title for t in terms) else 0
+            if r["country"] == "CH":
+                s += 2 if ROMANDIE.search(loc) else 1
+            d = posted_date(r["posted_at"])
+            return (s, d.toordinal() if d else 0, r["id"])
+
+        return [r["id"] for r in sorted(rows, key=score, reverse=True)]
 
     # ---------- 2. pré-filtro ----------
     def prefilter(self, job_row) -> str | None:
@@ -239,9 +278,10 @@ class Pipeline:
         if not skip_search:
             self.search()
         # vagas novas + as que ficaram pendentes por teto de custo em dias anteriores (mais novas primeiro)
-        ids = [r["id"] for r in self.db.conn.execute(
-            "SELECT j.id FROM jobs j WHERE (SELECT COUNT(*) FROM matches m WHERE m.job_id=j.id) < ?"
-            " ORDER BY j.id DESC", (len(self.candidates),))]
+        rows = self.db.conn.execute(
+            "SELECT j.id, j.title, j.location, j.country, j.posted_at FROM jobs j"
+            " WHERE (SELECT COUNT(*) FROM matches m WHERE m.job_id=j.id) < ?", (len(self.candidates),)).fetchall()
+        ids = self.prioritize(rows)
         self.match(ids)
         self.tailor_and_apply()
         path = report.build(self.db, self.data / "reports", since=started[:10])

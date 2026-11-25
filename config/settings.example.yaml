@@ -49,7 +49,7 @@ sources:
       countries: [LU]
       max_links_per_search: 30
     jobs_lu:
-      enabled: true
+      enabled: false   # desligado até confirmarmos o formato do endereço dos anúncios
       search_url: "https://en.jobs.lu/{query_slug}-jobs"   # ex.: en.jobs.lu/data-analyst-jobs
       link_regex: "jobs\\.lu/[^?#]*[0-9]{5,}"           # anúncios têm um número longo no endereço (a confirmar)
       countries: [LU]

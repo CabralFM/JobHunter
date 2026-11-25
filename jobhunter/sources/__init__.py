@@ -16,11 +16,18 @@ def build_sources(settings: dict) -> list[Source]:
     from .apify_source import ApifySource
     from .jobcloud import JobCloudSource
     from .jobspy_source import JobSpySource
+    from .jsonld import JsonLdSiteSource
+    from .linkedin import LinkedInSource
 
     out: list[Source] = []
     cfg = settings.get("sources", {})
     if cfg.get("jobspy", {}).get("enabled"):
         out.append(JobSpySource(cfg["jobspy"]))
+    if cfg.get("linkedin", {}).get("enabled"):
+        out.append(LinkedInSource(cfg["linkedin"]))
+    for name, site_cfg in (cfg.get("sites") or {}).items():
+        if site_cfg.get("enabled"):
+            out.append(JsonLdSiteSource(name, site_cfg))
     for site in ("jobs.ch", "jobup.ch"):
         if cfg.get(site, {}).get("enabled"):
             out.append(JobCloudSource(site, cfg[site]))

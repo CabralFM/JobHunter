@@ -23,6 +23,37 @@ sources:
     hours_old: 48                       # roda diário, olha 2 dias para não perder nada
     linkedin_fetch_description: true    # mais lento, mas sem descrição não há match bom
     proxies: null
+  linkedin:
+    # Busca pública do LinkedIn (sem login). Se bloquear, usa o Apify (apify_fallback) se
+    # houver APIFY_TOKEN no .env. Opcional: LINKEDIN_PROXY=http://usuario:senha@host:porta no .env.
+    enabled: true
+    max_pages: 2                    # 25 vagas por página, por termo e país
+    hours_old: 48
+    delay_seconds: [2.0, 5.0]       # pausa aleatória entre pedidos (ritmo humano)
+    backoff_seconds: [30, 90, 180]  # esperas antes de desistir quando o LinkedIn devolve 429
+    max_details_per_run: 200        # descrições baixadas por execução
+    apify_fallback:
+      # Actor do Apify para LinkedIn (usa proxies próprios). VERIFICAR o formato de entrada na
+      # aba "Input" do actor no primeiro uso; {linkedin_search_url} = busca do termo no país.
+      actor: "curious_coder/linkedin-jobs-scraper"
+      input_template: {"urls": ["{linkedin_search_url}"], "count": 50, "scrapeCompany": false}
+      countries: [CH, LU]
+  sites:
+    # Sites lidos pelo "cartão de vaga" JSON-LD de cada anúncio (o mesmo que o Google Jobs usa).
+    # search_url: abra o site, faça uma busca por "data analyst" e copie a URL da barra de
+    # endereço, trocando o termo por {query}. link_regex: padrão do endereço dos anúncios.
+    moovijob:
+      enabled: true
+      search_url: "https://www.moovijob.com/offres-emploi?q={query}"
+      link_regex: "moovijob\\.com/offres-emploi/[^/?#]+/[^/?#]+$"
+      countries: [LU]
+      max_links_per_search: 30
+    jobs_lu:
+      enabled: true
+      search_url: "https://www.jobs.lu/en/jobs/?q={query}"
+      link_regex: "jobs\\.lu/.*(job|emploi|offre|stellen)[^?#]*[0-9]"
+      countries: [LU]
+      max_links_per_search: 30
   jobs.ch:
     enabled: true
     rows: 20
@@ -33,20 +64,7 @@ sources:
     rows: 20
     max_pages: 1
     delay_seconds: 0.7
-  apify:                                # opcional: precisa de APIFY_TOKEN
-    moovijob:
-      enabled: false
-      actor: "ESCOLHA-NO-APIFY-STORE/moovijob-scraper"
-      input_template: {"keyword": "{query}", "location": "{location}", "maxItems": 50}
-      field_map: {title: title, company: company, url: url, description: description, location: location}
-      countries: [LU]
-    jobs_lu:
-      enabled: false
-      actor: "ESCOLHA-NO-APIFY-STORE/jobs-lu-scraper"
-      input_template: {"query": "{query}", "maxItems": 50}
-      field_map: {title: title, company: company, url: url, description: description, location: location}
-      countries: [LU]
-
+  apify: {}                            # actors extras do Apify (opcional, ver apify_source.py)
 prefilter:
   min_description_chars: 200
   exclude_title_patterns:            # regex, sem LLM, custo zero

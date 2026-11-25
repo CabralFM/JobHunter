@@ -44,16 +44,13 @@ parte frágil (scraping) e usa o Claude para a parte inteligente (match, adapta�
 
 ## 2. Fontes de vagas
 
-| Mercado | Site | Como | Status |
+| Mercado | Site | Como | Status (teste real de 25.11.2026) |
 |---|---|---|---|
-| CH + LU | **LinkedIn** | JobSpy (busca pública, sem login → sua conta não corre risco) | pronto |
-| CH + LU | **Indeed** (ch./lu.indeed.com) | JobSpy | pronto |
-| CH + LU | **Google Jobs** | JobSpy — agrega jobup, moovijob, jobs.lu, sites de empresas | pronto |
-| CH | **jobs.ch** / **jobup.ch** (JobCloud; jobup = principal da Romandie) | API JSON interna do site | ⚠ **não verificado** — rode `probe` (ver §7) |
-| CH | job-room.ch / arbeit.swiss (SECO, público) | Apify ou API oficial (pedir a jobroom-api@seco.admin.ch) | configurável |
-| CH | JobScout24, Indeed já cobre | — | — |
-| LU | **moovijob.com**, **jobs.lu**, jobfinder.lu, ADEM | Apify (`sources.apify` no settings) | configurável |
-| LU | ictjob.lu, financejobs.lu (nichos TI/finanças) | Apify ou novo conector | futuro |
+| CH | **jobs.ch** / **jobup.ch** (JobCloud; jobup = principal da Romandie) | API JSON do site, país inteiro | ✅ funciona |
+| CH + LU | **Indeed** (ch./lu.indeed.com) | JobSpy, país inteiro | ✅ funciona |
+| CH + LU | **LinkedIn** | conector próprio (`sources/linkedin.py`): busca pública sem login, imitando o Chrome, ritmo humano, novas tentativas; se bloquear, passa para um actor do Apify | a testar |
+| LU | **moovijob.com**, **jobs.lu** | conector próprio (`sources/jsonld.py`): lê o "cartão de vaga" JSON-LD de cada anúncio | a testar |
+| CH + LU | Google Jobs | JobSpy | ❌ não devolveu vagas (desligado) |
 
 "jobapp.ch" não foi encontrado — se for outro site, me passe o link e vira um conector.
 

@@ -72,4 +72,11 @@ def render_doc(markdown_text: str, out_dir: Path, basename: str, photo: Path | N
     html_path = out_dir / f"{basename}.html"
     html_path.write_text(html, encoding="utf-8")
     pdf_path = out_dir / f"{basename}.pdf"
+    try:
+        if pdf_path.exists():
+            pdf_path.open("ab").close()  # falha se o PDF estiver aberto no leitor (Windows)
+    except PermissionError:
+        from datetime import datetime
+        pdf_path = out_dir / f"{basename}-{datetime.now():%H%M%S}.pdf"
+        log.warning("PDF anterior está aberto em outro programa; gravando como %s", pdf_path.name)
     return pdf_path if html_to_pdf(html, pdf_path) else html_path

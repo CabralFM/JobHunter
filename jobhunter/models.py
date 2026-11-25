@@ -17,6 +17,22 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+COMPANY_NOISE = {"sa", "ag", "ltd", "limited", "gmbh", "sarl", "sas", "llc", "inc", "plc", "nv", "bv", "spa",
+                 "co", "cie", "company", "group", "groupe", "gruppe", "holding", "holdings", "bank", "banque",
+                 "banca", "the", "et", "and", "und"}
+
+
+def _norm_company(text: str) -> str:
+    """'Bank Julius Bär & Co. AG' e 'JULIUS BAER' -> 'julius baer';
+    'Banque Lombard Odier & Cie SA', 'Lombard Odier Group' -> 'lombard odier'."""
+    t = (text or "").lower()
+    for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue")):
+        t = t.replace(a, b)
+    t = re.sub(r"\(.*?\)", " ", unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode())
+    words = [w for w in re.split(r"[^a-z0-9]+", t) if len(w) > 1 and w not in COMPANY_NOISE]
+    return " ".join(words)
+
+
 def _norm(text: str) -> str:
     text = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode()
     text = re.sub(r"\(.*?\)|\b(m|f|w|h|d|x)\s*/\s*(f|w|h|m|d|x)(\s*/\s*\w)?\b", " ", text.lower())
@@ -48,8 +64,12 @@ class Job:
 
         Usamos empresa + título normalizados (sem "(m/f/d)", sem "80-100%").
         """
-        base = f"{_norm(self.company)}|{_norm(self.title)}"
-        return hashlib.sha1(base.encode()).hexdigest()[:16]
+        return dedup_key(self.company, self.title)
+
+
+def dedup_key(company: str, title: str) -> str:
+    base = f"{_norm_company(company)}|{_norm(title)}"
+    return hashlib.sha1(base.encode()).hexdigest()[:16]
 
 
 # ---------- Saídas estruturadas do LLM ----------

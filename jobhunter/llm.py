@@ -35,6 +35,13 @@ class LLMRefused(RuntimeError):
     pass
 
 
+class FatalAPIError(RuntimeError):
+    """Erro que não adianta repetir (sem crédito, chave inválida): a execução deve parar."""
+
+
+FATAL_HINTS = ("credit balance", "invalid x-api-key", "authentication", "permission")
+
+
 def ask(
     *,
     system: str,
@@ -57,7 +64,14 @@ def ask(
         kwargs["betas"] = ["server-side-fallback-2026-07-01"]
         kwargs["fallbacks"] = "default"
 
-    resp = client().beta.messages.parse(**kwargs)
+    try:
+        resp = client().beta.messages.parse(**kwargs)
+    except (anthropic.AuthenticationError, anthropic.PermissionDeniedError) as e:
+        raise FatalAPIError(f"chave da API inválida ou sem permissão: {e}") from e
+    except anthropic.BadRequestError as e:
+        if any(h in str(e).lower() for h in FATAL_HINTS):
+            raise FatalAPIError(f"sem crédito na API da Anthropic (console.anthropic.com → Billing): {e}") from e
+        raise
 
     if resp.stop_reason == "refusal":
         raise LLMRefused(getattr(resp.stop_details, "explanation", "refusal"))

@@ -222,3 +222,43 @@ def test_prioritize_romandie_and_title_first(env):
         {"id": 4, "title": "Data Analyst", "location": "Zürich", "country": "CH", "posted_at": "2026-11-24"},
     ]
     assert p.prioritize(rows) == [3, 4, 1, 2]
+
+
+def test_dedupe_merges_same_job_with_different_company_spelling(tmp_path):
+    from jobhunter.db import DB
+    from jobhunter.models import Job
+    from jobhunter.pipeline import Pipeline
+    db = DB(tmp_path / "t.db")
+    # simula vagas gravadas com a chave antiga (empresa sem normalização)
+    ids = []
+    for src, comp in (("jobup.ch", "Banque Lombard Odier & Cie SA"), ("indeed", "Lombard Odier & Cie"),
+                      ("linkedin", "Lombard Odier Group")):
+        j = Job(src, src, "u-" + src, "Data Analyst", comp, "Genève", "CH", "d" * 300)
+        cur = db.conn.execute("INSERT INTO jobs (dedup_key, source, external_id, url, title, company, country, description)"
+                              " VALUES (?,?,?,?,?,?,?,?)", (src, src, src, j.url, j.title, comp, "CH", j.description))
+        ids.append(cur.lastrowid)
+    db.save_match(ids[1], "eu", decision="apply")
+    db.save_application(ids[2], "eu", status="drafted")
+    p = Pipeline.__new__(Pipeline)
+    p.db = db
+    assert p.dedupe() == 2
+    rows = db.conn.execute("SELECT id, also_seen_on FROM jobs").fetchall()
+    assert [r[0] for r in rows] == [ids[2]]                 # ficou a que tem candidatura
+    assert "jobup.ch" in rows[0][1] and "indeed" in rows[0][1]
+    # uma nova coleta da mesma vaga não cria linha nova
+    _, is_new = db.upsert_job(Job("jobs.ch", "x", "u-x", "Data Analyst", "LOMBARD ODIER", "Genève", "CH", "d"))
+    assert not is_new
+
+
+def test_fatal_api_error_stops_run(env, monkeypatch):
+    from jobhunter.llm import FatalAPIError
+    root, settings = env
+    calls = []
+
+    def broke(**k):
+        calls.append(1)
+        raise FatalAPIError("sem crédito")
+    monkeypatch.setattr(matcher, "ask", broke)
+    p = pipeline.Pipeline(settings, sources=[FakeSource()])
+    p.run()
+    assert len(calls) == 1 and "aborted" in p.stats

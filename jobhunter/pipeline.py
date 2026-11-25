@@ -21,6 +21,8 @@ from . import matcher, report
 from .apply import send_email
 from .config import ROOT, Candidate, load_candidates
 from .db import DB, now
+from .llm import FatalAPIError
+from .models import dedup_key
 from .query_expansion import build_terms
 from .render import render_doc, slug
 from .sources import build_sources
@@ -85,6 +87,36 @@ class Pipeline:
             self.db.conn.commit()
             log.info("%d vagas do LinkedIn sem descrição removidas para nova coleta", len(ids))
         return len(ids)
+
+    def dedupe(self) -> int:
+        """Junta vagas repetidas já gravadas (mesma vaga em jobs.ch, LinkedIn e Indeed com nomes
+        de empresa escritos de jeitos diferentes). Mantém a que tem candidatura, senão a mais antiga;
+        apaga as outras (e suas análises) se não tiverem candidatura."""
+        rows = self.db.conn.execute("SELECT id, company, title, dedup_key, also_seen_on, source FROM jobs ORDER BY id").fetchall()
+        with_app = {r[0] for r in self.db.conn.execute("SELECT DISTINCT job_id FROM applications")}
+        groups: dict[str, list] = {}
+        for r in rows:
+            groups.setdefault(dedup_key(r["company"], r["title"]), []).append(r)
+        removed = 0
+        for key, grp in groups.items():
+            keep = next((r for r in grp if r["id"] in with_app), grp[0])
+            seen = set(json.loads(keep["also_seen_on"] or "[]"))
+            for r in grp:
+                if r["id"] == keep["id"] or r["id"] in with_app:
+                    continue
+                seen.add(r["source"])
+                self.db.conn.execute("DELETE FROM matches WHERE job_id=?", (r["id"],))
+                self.db.conn.execute("DELETE FROM jobs WHERE id=?", (r["id"],))
+                removed += 1
+            if keep["dedup_key"] != key and not self.db.conn.execute(
+                    "SELECT 1 FROM jobs WHERE dedup_key=? AND id<>?", (key, keep["id"])).fetchone():
+                self.db.conn.execute("UPDATE jobs SET dedup_key=? WHERE id=?", (key, keep["id"]))
+            self.db.conn.execute("UPDATE jobs SET also_seen_on=? WHERE id=?",
+                                 (json.dumps(sorted(seen - {keep["source"]})), keep["id"]))
+        self.db.conn.commit()
+        if removed:
+            log.info("%d vagas repetidas unificadas", removed)
+        return removed
 
     def search(self) -> list[int]:
         self.heal()
@@ -198,6 +230,8 @@ class Pipeline:
                 continue
             try:
                 t = matcher.triage(row, todo, self.llm["triage"])
+            except FatalAPIError:
+                raise
             except Exception as e:
                 log.warning("triagem falhou para job %s: %s", jid, e)
                 continue
@@ -213,6 +247,8 @@ class Pipeline:
                     continue
                 try:
                     a = matcher.assess(row, c, self.llm["assess"])
+                except FatalAPIError:
+                    raise
                 except Exception as e:
                     log.warning("avaliação falhou job %s/%s: %s", jid, c.id, e)
                     continue
@@ -239,6 +275,8 @@ class Pipeline:
                 try:
                     docs = tailor(row, c, a, self.llm["tailor"])
                     v = verify(docs, c, self.llm["verify"])
+                except FatalAPIError:
+                    raise
                 except Exception as e:
                     log.warning("adaptação falhou job %s/%s: %s", row["id"], c.id, e)
                     continue
@@ -278,12 +316,17 @@ class Pipeline:
         if not skip_search:
             self.search()
         # vagas novas + as que ficaram pendentes por teto de custo em dias anteriores (mais novas primeiro)
+        self.dedupe()
         rows = self.db.conn.execute(
             "SELECT j.id, j.title, j.location, j.country, j.posted_at FROM jobs j"
             " WHERE (SELECT COUNT(*) FROM matches m WHERE m.job_id=j.id) < ?", (len(self.candidates),)).fetchall()
         ids = self.prioritize(rows)
-        self.match(ids)
-        self.tailor_and_apply()
+        try:
+            self.match(ids)
+            self.tailor_and_apply()
+        except FatalAPIError as e:
+            log.error("EXECUÇÃO INTERROMPIDA: %s", e)
+            self.stats["aborted"] = str(e)[:200]
         path = report.build(self.db, self.data / "reports", since=started[:10])
         self.db.log_run(started, self.stats)
         log.info("concluído: %s — relatório: %s", self.stats, path)

@@ -72,13 +72,26 @@ class Verification(BaseModel):
     ok: bool
 
 
-VERIFY_SYSTEM = """Você é um auditor de CVs. Recebe um PERFIL MESTRE (verdade) e um CV + carta
-gerados. Liste toda afirmação factual (empresa, cargo, data, diploma, certificação, número,
-ferramenta, nível de idioma, responsabilidade concreta) que NÃO tenha respaldo no perfil mestre.
-Reformulações e traduções de fatos verdadeiros são aceitáveis. ok=true se a lista estiver vazia.
+VERIFY_SYSTEM = """Você é um auditor de CVs. Recebe as FONTES DA VERDADE do candidato (perfil
+mestre + dados pessoais/preferências do profile.yaml) e um CV + carta gerados. Liste toda
+afirmação factual (empresa, cargo exercido, data, diploma, certificação, número, ferramenta, nível
+de idioma, responsabilidade concreta) que NÃO tenha respaldo nessas fontes.
+
+NÃO são invenções (não liste):
+- reformulações, sínteses e traduções de fatos verdadeiros;
+- o TÍTULO/headline logo abaixo do nome ajustado ao cargo da vaga, desde que coerente com a
+  experiência real (é uma regra do sistema; ex.: "Business Analyst" para quem faz levantamento
+  de requisitos e especificações);
+- dados de contato, nacionalidade, situação de permis, disponibilidade e mobilidade que estejam
+  no profile.yaml;
+- motivação e interesse expressos na carta (ex.: "je suis motivé par...").
+Seja específico: cite o trecho exato e por que não tem respaldo. ok=true se a lista estiver vazia.
 
 ### PERFIL MESTRE
-{master}"""
+{master}
+
+### PROFILE.YAML (dados pessoais e preferências)
+{profile}"""
 
 
 def documents_language(job_row, cand: Candidate) -> str:
@@ -126,7 +139,8 @@ Local: {job_row['location']} ({job_row['country']})
 
 def verify(docs: TailoredDocs, cand: Candidate, step_cfg: dict) -> Verification:
     return ask(
-        system=VERIFY_SYSTEM.format(master=cand.master_cv),
+        system=VERIFY_SYSTEM.format(master=cand.master_cv,
+                                    profile=json.dumps(cand.profile, ensure_ascii=False, indent=2)),
         user=f"## CV gerado\n{docs.cv_markdown}\n\n## Carta gerada\n{docs.cover_letter_markdown}",
         schema=Verification,
         step_cfg=step_cfg,

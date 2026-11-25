@@ -273,3 +273,18 @@ def test_mobility_per_country():
     assert mobility_for({"country": "FR"}, cand) == "Suisse romande"   # sem chave: primeira
     cand2 = SimpleNamespace(profile={"mobility": "texto único"})
     assert mobility_for({"country": "LU"}, cand2) == "texto único"
+
+
+def test_budget_guard(tmp_path):
+    from types import SimpleNamespace
+    import pytest
+    from jobhunter import llm
+    llm.set_budget(tmp_path, 0.001)
+    u = SimpleNamespace(input_tokens=5000, output_tokens=1000,
+                        cache_read_input_tokens=0, cache_creation_input_tokens=0)
+    cost = llm.call_cost("claude-haiku-5-5", u)
+    assert abs(cost - 0.001) < 1e-9          # 5000*0.10/1M + 1000*0.50/1M
+    llm._add_spend(cost)
+    with pytest.raises(llm.FatalAPIError):
+        llm._check_budget()
+    llm.set_budget(tmp_path, None)

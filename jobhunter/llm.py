@@ -5,14 +5,20 @@ Decisões:
 - Prompt caching no bloco de sistema: o perfil/CV do candidato é idêntico em centenas de
   chamadas por dia; com cache, essa parte custa ~5% do preço normal a partir da 2ª chamada.
 - `fallbacks: "default"`: se um classificador de segurança recusar a requisição (raro, mas
-  possível com textos longos de terceiros), a API refaz em outro modelo em vez de falhar.
+  possível com textos longos de terceiros), a API refaz em outro modelo em vez de falhar
+  (não existe no Haiku; lá a recusa só pula a vaga).
+- Orçamento: o custo de cada chamada é somado em data/spend.json; passou do teto mensal
+  (settings.yaml -> budget.monthly_usd), tudo para até o mês seguinte.
 - O modelo e o "effort" de cada etapa vêm do settings.yaml — triagem pode usar effort baixo
   (ou o Haiku, se quiser economizar), adaptação de CV usa effort alto.
 """
 
 from __future__ import annotations
 
+import json
 import logging
+from datetime import date
+from pathlib import Path
 from typing import TypeVar
 
 import anthropic
@@ -41,6 +47,67 @@ class FatalAPIError(RuntimeError):
 
 FATAL_HINTS = ("credit balance", "invalid x-api-key", "authentication", "permission")
 
+# Preço em US$ por 1 milhão de tokens: (entrada, saída, leitura de cache, escrita de cache).
+# Fonte: tabela de preços da Anthropic (nov/2026). Modelos fora da tabela contam como Opus.
+PRICES = {
+    "claude-haiku-5-5": (0.10, 0.50, 0.01, 0.125),
+    "claude-sonnet-5-5": (2.00, 10.00, 0.10, 2.50),
+    "claude-opus-5-5": (4.00, 20.00, 0.20, 5.00),
+}
+
+# Orçamento mensal: cada chamada soma o custo real (pelos tokens que a API devolve) em
+# data/spend.json; ao atingir o teto, a execução para como se o crédito tivesse acabado.
+_budget = {"path": None, "monthly_usd": None}
+
+
+def set_budget(data_dir: Path, monthly_usd: float | None) -> None:
+    _budget["path"] = Path(data_dir) / "spend.json"
+    _budget["monthly_usd"] = monthly_usd
+
+
+def _month() -> str:
+    return date.today().strftime("%Y-%m")
+
+
+def _load_spend() -> dict:
+    path = _budget["path"]
+    if path and path.exists():
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except ValueError:
+            return {}
+    return {}
+
+
+def spent_this_month() -> float:
+    return float(_load_spend().get(_month(), 0.0))
+
+
+def call_cost(model: str, usage) -> float:
+    pin, pout, pread, pwrite = PRICES.get(model, PRICES["claude-opus-5-5"])
+    read = getattr(usage, "cache_read_input_tokens", 0) or 0
+    write = getattr(usage, "cache_creation_input_tokens", 0) or 0
+    return (usage.input_tokens * pin + usage.output_tokens * pout
+            + read * pread + write * pwrite) / 1_000_000
+
+
+def _add_spend(usd: float) -> None:
+    path = _budget["path"]
+    if not path:
+        return
+    data = _load_spend()
+    data[_month()] = round(float(data.get(_month(), 0.0)) + usd, 6)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def _check_budget() -> None:
+    cap = _budget["monthly_usd"]
+    if cap is not None and spent_this_month() >= cap:
+        raise FatalAPIError(
+            f"orçamento do mês atingido (US$ {spent_this_month():.2f} de US$ {cap:.2f}); "
+            "aumente budget.monthly_usd no settings.yaml ou espere o próximo mês")
+
 
 def ask(
     *,
@@ -52,6 +119,7 @@ def ask(
 ) -> T:
     """Uma chamada com saída estruturada. `step_cfg` = {"model": ..., "effort": ...}."""
     model = step_cfg.get("model", "claude-opus-5-5")
+    _check_budget()
     kwargs = dict(
         model=model,
         max_tokens=max_tokens,
@@ -78,6 +146,7 @@ def ask(
     if resp.stop_reason == "max_tokens":
         raise RuntimeError("resposta cortada por max_tokens; aumente max_tokens dessa etapa")
     u = resp.usage
+    _add_spend(call_cost(model, u))
     log.debug("llm %s in=%s cache_read=%s out=%s", model, u.input_tokens,
               getattr(u, "cache_read_input_tokens", 0), u.output_tokens)
     return resp.parsed_output

@@ -84,18 +84,23 @@ thresholds:
   apply_min_desire: 60      # e a vaga tem que ser algo que você QUER
   review_min_potential: 58  # aparece no relatório para você decidir
 
-limits:                       # teto de custo: o que passar fica para o dia seguinte
-  max_triage_per_day: 300
-  max_assess_per_day: 120
+limits:                       # teto de chamadas: o que passar fica para o dia seguinte
+  max_triage_per_day: 250
+  max_assess_per_day: 40
+
+budget:
+  monthly_usd: 5.0            # teto de gasto na API por mês; atingiu, para até o mês seguinte
 
 llm:
-  # Todas as etapas usam o Claude Opus 5.5 por padrão. Para baratear a triagem (a etapa de
-  # maior volume), troque o modelo dela por "claude-haiku-5-5".
-  expand: {model: claude-opus-5-5, effort: high}
-  triage: {model: claude-opus-5-5, effort: low}
-  assess: {model: claude-opus-5-5, effort: medium}
-  tailor: {model: claude-opus-5-5, effort: high}
-  verify: {model: claude-opus-5-5, effort: medium}
+  # Modo econômico: tudo no Claude Haiku 5.5 (US$ 0,10 / 0,50 por milhão de tokens, ~40x mais
+  # barato que o Opus 5.5). Custo estimado: US$ 3-5 por mês para os dois candidatos.
+  # Para um texto melhor só nas vagas que valem: retailor <id> <candidato> --model claude-sonnet-5-5
+  # Para voltar à qualidade máxima (e ~US$ 100+/mês): claude-opus-5-5 nas etapas.
+  expand: {model: claude-haiku-5-5, effort: medium}
+  triage: {model: claude-haiku-5-5, effort: low}
+  assess: {model: claude-haiku-5-5, effort: medium}
+  tailor: {model: claude-haiku-5-5, effort: high}
+  verify: {model: claude-haiku-5-5, effort: medium}
 
 apply:
   mode: queue                     # queue | email

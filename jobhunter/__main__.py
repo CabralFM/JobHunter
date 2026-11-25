@@ -11,6 +11,8 @@
     python -m jobhunter report           # regenera o relatório do dia
     python -m jobhunter retailor         # refaz CV/carta das candidaturas "needs_review"
     python -m jobhunter retailor 123 eu  # refaz uma candidatura específica
+    python -m jobhunter retailor 123 eu --model claude-sonnet-5-5   # texto melhor, só nessa
+    python -m jobhunter custo            # quanto já gastou na API neste mês
 """
 
 from __future__ import annotations
@@ -59,6 +61,8 @@ def main(argv=None):
     f.add_argument("verdict", choices=["good", "bad"])
     sub.add_parser("report")
     rt = sub.add_parser("retailor"); rt.add_argument("job_id", type=int, nargs="?"); rt.add_argument("candidate", nargs="?")
+    rt.add_argument("--model", help="modelo só para esta adaptação, ex.: claude-sonnet-5-5 (melhor texto, ~US$ 0,08)")
+    sub.add_parser("custo")
     args = ap.parse_args(argv)
 
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
@@ -75,6 +79,8 @@ def main(argv=None):
     load_dotenv(ROOT / ".env")
     settings = load_settings()
     data = ROOT / settings.get("data_dir", "data")
+    from .llm import set_budget, spent_this_month
+    set_budget(data, (settings.get("budget") or {}).get("monthly_usd"))
 
     if args.cmd == "run":
         from .pipeline import Pipeline
@@ -87,6 +93,7 @@ def main(argv=None):
             lim["max_assess_per_day"] = args.max_assess
         settings["limits"] = lim
         print(Pipeline(settings).run(skip_search=args.no_search))
+        print(_spend_line(settings))
 
     elif args.cmd == "terms":
         from .query_expansion import build_terms
@@ -153,6 +160,9 @@ def main(argv=None):
         # candidatura antiga continua lá, em vez de sumir.
         n = db.conn.execute(f"DELETE FROM applications WHERE {where}", params).rowcount
         print(f"{n} candidatura(s) a refazer; gerando de novo...")
+        if args.model:
+            for step in ("tailor", "verify"):
+                settings["llm"][step] = {**settings["llm"][step], "model": args.model}
         p = Pipeline(settings, db=db, sources=[])
         try:
             p.tailor_and_apply()
@@ -164,10 +174,20 @@ def main(argv=None):
         from . import report
         print(p.stats, report.build(db, data / "reports", since="2000-01-01"))
 
+    elif args.cmd == "custo":
+        print(_spend_line(settings))
+
     elif args.cmd == "report":
         from . import report
         from .db import DB
         print(report.build(DB(data / "jobhunter.db"), data / "reports", since="2000-01-01"))
+
+
+def _spend_line(settings) -> str:
+    from .llm import spent_this_month
+    cap = (settings.get("budget") or {}).get("monthly_usd")
+    teto = f" de US$ {cap:.2f}" if cap is not None else ""
+    return f"Gasto na API neste mês: US$ {spent_this_month():.2f}{teto}"
 
 
 def run_cli() -> None:

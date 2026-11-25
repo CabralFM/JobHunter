@@ -2,6 +2,8 @@
 # Preencha com calma — é a parte mais importante do sistema (ver README, "Definindo o que procuramos").
 
 name: "Nome Sobrenome"
+# Título do CV quando a vaga não pede um ajuste; nos CVs adaptados o título segue a vaga.
+default_headline: "Analyste de données"
 contact:
   email: "nome@exemplo.com"
   phone: "+41 00 000 00 00"

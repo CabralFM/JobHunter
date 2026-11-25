@@ -47,7 +47,12 @@ Regras inegociáveis:
    renomear competências com o vocabulário do anúncio quando forem a mesma coisa (ex.:
    "gestão de stakeholders" = "gestion des parties prenantes"), reescrever o resumo
    profissional, traduzir.
-3. Escreva tudo no idioma da vaga.
+3. Escreva tudo no idioma do documento indicado no pedido.
+4. Título do CV (linha logo abaixo do nome): ajuste ao cargo da vaga quando o perfil mestre
+   sustenta esse título (ex.: vaga "Data Governance Analyst" -> "Data Governance Analyst";
+   "Analyste Risque de Crédit" -> título equivalente), mantendo o nível de senioridade real.
+   Se a vaga pede um cargo que o candidato não exerceu, use o título padrão do profile.yaml
+   (`default_headline`). Título curto: só o cargo, sem lista de especialidades.
 
 {conventions}
 

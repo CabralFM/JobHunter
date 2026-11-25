@@ -28,7 +28,7 @@ sources:
     # houver APIFY_TOKEN no .env. Opcional: LINKEDIN_PROXY=http://usuario:senha@host:porta no .env.
     enabled: true
     max_pages: 2                    # 25 vagas por página, por termo e país
-    delay_seconds: [2.0, 5.0]       # pausa aleatória entre pedidos (ritmo humano)
+    delay_seconds: [4.0, 8.0]       # pausa aleatória entre pedidos (ritmo humano; menos 429)
     backoff_seconds: [30, 90, 180]  # esperas antes de desistir quando o LinkedIn devolve 429
     max_details_per_run: 200        # descrições baixadas por execução
     apify_fallback:

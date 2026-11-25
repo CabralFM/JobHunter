@@ -157,3 +157,26 @@ def test_jsonld_sitemap_mode(monkeypatch):
 
 def test_jsonld_search_url_slug():
     assert __import__("jobhunter.sources.jsonld", fromlist=["x"]).slugify("Data Analyst / BI") == "data-analyst-bi"
+
+
+def test_linkedin_detail_cap_defers_instead_of_saving_empty(monkeypatch):
+    src = linkedin.LinkedInSource({"max_pages": 1, "max_details_per_run": 1})
+    monkeypatch.setattr(src, "_get", lambda url, **p: LI_SEARCH if url == linkedin.SEARCH else LI_DETAIL)
+    jobs = src.search("x", "", "CH")
+    assert len(jobs) == 1 and jobs[0].description            # só a que teve descrição
+    assert src.deferred == 1 and "4099999999" not in src.known_ids  # a outra fica para amanhã
+
+
+def test_heal_removes_linkedin_jobs_without_description(tmp_path):
+    from jobhunter.db import DB
+    from jobhunter.models import Job
+    from jobhunter.pipeline import Pipeline
+    db = DB(tmp_path / "t.db")
+    bad, _ = db.upsert_job(Job("linkedin", "1", "u1", "A", "X", "", "CH", ""))
+    good, _ = db.upsert_job(Job("linkedin", "2", "u2", "B", "Y", "", "CH", "d" * 300))
+    db.save_match(bad, "eu", decision="skip")
+    p = Pipeline.__new__(Pipeline)
+    p.db = db
+    assert p.heal() == 1
+    assert [r[0] for r in db.conn.execute("SELECT id FROM jobs")] == [good]
+    assert db.conn.execute("SELECT COUNT(*) FROM matches").fetchone()[0] == 0

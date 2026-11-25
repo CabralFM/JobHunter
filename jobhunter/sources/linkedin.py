@@ -90,12 +90,13 @@ class LinkedInSource(Source):
     def __init__(self, cfg: dict):
         self.max_pages = cfg.get("max_pages", 2)            # 25 vagas por página
         self.hours_old = cfg.get("hours_old", 48)
-        self.delay = tuple(cfg.get("delay_seconds", [2.0, 5.0]))
+        self.delay = tuple(cfg.get("delay_seconds", [4.0, 8.0]))
         self.backoff = cfg.get("backoff_seconds", [30, 90, 180])
         self.max_details = cfg.get("max_details_per_run", 200)
         self.known_ids = set()
         self.blocked = False
         self.details_done = 0
+        self.deferred = 0
         self.fallback = ApifySource("linkedin", {**cfg["apify_fallback"], "source_name": "linkedin"}) \
             if cfg.get("apify_fallback", {}).get("actor") else None
         self._session = None
@@ -160,10 +161,15 @@ class LinkedInSource(Source):
             for c in cards:
                 if c["id"] in self.known_ids:
                     continue
-                desc = ""
-                if self.details_done < self.max_details:
-                    desc = parse_detail(self._get(DETAIL.format(id=c["id"])) or "")
-                    self.details_done += 1
+                if self.details_done >= self.max_details:
+                    # cota de descrições do dia esgotada: NÃO grava a vaga (sem descrição ela seria
+                    # descartada para sempre); fica para a próxima execução
+                    self.deferred += 1
+                    continue
+                desc = parse_detail(self._get(DETAIL.format(id=c["id"])) or "")
+                self.details_done += 1
+                if not desc:
+                    continue  # detalhe falhou: tenta de novo na próxima execução
                 self.known_ids.add(c["id"])
                 jobs.append(Job(
                     source="linkedin", external_id=c["id"], url=f"{BASE}/jobs/view/{c['id']}/",

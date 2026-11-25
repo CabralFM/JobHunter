@@ -61,7 +61,21 @@ class Pipeline:
         self.stats: dict = {}
 
     # ---------- 1. busca ----------
+    def heal(self) -> int:
+        """Remove vagas do LinkedIn gravadas sem descrição (por versões antigas), para que sejam
+        baixadas de novo, completas, na busca seguinte."""
+        ids = [r[0] for r in self.db.conn.execute(
+            "SELECT id FROM jobs WHERE source='linkedin' AND length(coalesce(description,'')) < 200")]
+        if ids:
+            q = ",".join("?" * len(ids))
+            self.db.conn.execute(f"DELETE FROM matches WHERE job_id IN ({q})", ids)
+            self.db.conn.execute(f"DELETE FROM jobs WHERE id IN ({q})", ids)
+            self.db.conn.commit()
+            log.info("%d vagas do LinkedIn sem descrição removidas para nova coleta", len(ids))
+        return len(ids)
+
     def search(self) -> list[int]:
+        self.heal()
         per_cand = [build_terms(c, self.llm["expand"], self.data,
                                 self.s["search"].get("max_terms_per_candidate", 15)) for c in self.candidates]
 

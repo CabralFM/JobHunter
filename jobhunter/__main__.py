@@ -196,7 +196,7 @@ def run_cli() -> None:
         main()
     except FatalAPIError as e:
         # Erro de crédito/chave: mensagem curta em vez de um traceback de 40 linhas.
-        print(f"\nPARADO: {e}\nRecarregue o crédito em console.anthropic.com -> Billing e rode de novo.",
+        print(f"\nPARADO: {e}\nResolva no console.anthropic.com (veja a mensagem acima) e rode de novo.",
               file=sys.stderr)
         sys.exit(2)
 

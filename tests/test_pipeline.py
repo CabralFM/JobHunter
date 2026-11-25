@@ -288,3 +288,15 @@ def test_budget_guard(tmp_path):
     with pytest.raises(llm.FatalAPIError):
         llm._check_budget()
     llm.set_budget(tmp_path, None)
+
+
+def test_usage_limit_is_fatal():
+    from jobhunter import llm
+    e = RuntimeError("Error code: 400 - You have reached your specified API usage limits. "
+                     "You will regain access on 2026-12-01 at 00:00 UTC.")
+    out = llm._fatal_or_same(e)
+    assert isinstance(out, llm.FatalAPIError) and "Limits" in str(out)
+    out = llm._fatal_or_same(RuntimeError("Your credit balance is too low"))
+    assert isinstance(out, llm.FatalAPIError) and "Billing" in str(out)
+    other = RuntimeError("bad schema")
+    assert llm._fatal_or_same(other) is other

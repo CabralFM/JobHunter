@@ -46,6 +46,21 @@ class FatalAPIError(RuntimeError):
 
 
 FATAL_HINTS = ("credit balance", "invalid x-api-key", "authentication", "permission")
+LIMIT_HINTS = ("usage limit", "spend limit", "regain access")
+
+
+def _fatal_or_same(e: Exception) -> Exception:
+    """Converte erros 400 que não adianta repetir em FatalAPIError, com uma mensagem útil."""
+    msg = str(e).lower()
+    if any(h in msg for h in LIMIT_HINTS):
+        return FatalAPIError(
+            "limite de gasto mensal configurado no console da Anthropic foi atingido "
+            "(console.anthropic.com → Settings → Limits → aumente o 'monthly spend limit'): "
+            f"{e}")
+    if any(h in msg for h in FATAL_HINTS):
+        return FatalAPIError(
+            f"sem crédito na API da Anthropic (console.anthropic.com → Billing): {e}")
+    return e
 
 # Preço em US$ por 1 milhão de tokens: (entrada, saída, leitura de cache, escrita de cache).
 # Fonte: tabela de preços da Anthropic (nov/2026). Modelos fora da tabela contam como Opus.
@@ -137,9 +152,7 @@ def ask(
     except (anthropic.AuthenticationError, anthropic.PermissionDeniedError) as e:
         raise FatalAPIError(f"chave da API inválida ou sem permissão: {e}") from e
     except anthropic.BadRequestError as e:
-        if any(h in str(e).lower() for h in FATAL_HINTS):
-            raise FatalAPIError(f"sem crédito na API da Anthropic (console.anthropic.com → Billing): {e}") from e
-        raise
+        raise _fatal_or_same(e) from e
 
     if resp.stop_reason == "refusal":
         raise LLMRefused(getattr(resp.stop_details, "explanation", "refusal"))

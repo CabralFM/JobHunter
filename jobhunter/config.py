@@ -17,6 +17,13 @@ class Candidate:
     profile: dict          # profile.yaml: o que procura, restrições, idiomas, permis...
     master_cv: str         # master_cv.md: inventário COMPLETO de carreira (só fatos reais)
     current_cv: str        # current_cv.md: o CV que está sendo usado hoje
+    dir: Path | None = None
+
+    @property
+    def photo(self) -> Path | None:
+        """Foto para o CV (profile.yaml -> photo: photo.jpg). Só no CV, nunca na carta."""
+        name = self.profile.get("photo")
+        return (self.dir / name) if (name and self.dir) else None
 
     @property
     def name(self) -> str:
@@ -42,6 +49,7 @@ def load_candidates(settings: dict) -> list[Candidate]:
                 profile=yaml.safe_load((d / "profile.yaml").read_text(encoding="utf-8")),
                 master_cv=(d / "master_cv.md").read_text(encoding="utf-8"),
                 current_cv=(d / "current_cv.md").read_text(encoding="utf-8"),
+                dir=d,
             )
         )
     return out

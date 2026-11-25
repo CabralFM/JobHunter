@@ -4,6 +4,7 @@
 name: "Nome Sobrenome"
 # Título do CV quando a vaga não pede um ajuste; nos CVs adaptados o título segue a vaga.
 default_headline: "Analyste de données"
+# photo: photo.jpg   # opcional: arquivo nesta pasta; vai no CV (canto superior direito), nunca na carta
 contact:
   email: "nome@exemplo.com"
   phone: "+41 00 000 00 00"

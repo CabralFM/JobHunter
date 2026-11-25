@@ -8,7 +8,9 @@ instalado, salvamos .md e .html — o pipeline não para por causa disso.
 
 from __future__ import annotations
 
+import base64
 import logging
+import mimetypes
 import os
 import re
 from pathlib import Path
@@ -23,7 +25,7 @@ def slug(s: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]+", "-", s).strip("-").lower()[:60]
 
 
-def to_html(markdown_text: str, title: str) -> str:
+def to_html(markdown_text: str, title: str, photo: Path | None = None) -> str:
     css = (TEMPLATES / "cv.css").read_text(encoding="utf-8")
     # Markdown "estrito" exige linha em branco antes de lista; LLMs e humanos costumam omitir,
     # e a lista vira parágrafo corrido. Inserimos a linha em branco que falta.
@@ -31,6 +33,11 @@ def to_html(markdown_text: str, title: str) -> str:
                            r"\1\n\n", markdown_text)
     # nl2br: quebras de linha simples (ex.: cabeçalho com telefone/e-mail) são respeitadas
     body = md.markdown(markdown_text, extensions=["tables", "sane_lists", "nl2br"])
+    if photo and Path(photo).exists():
+        # foto embutida (base64) para o PDF não depender de arquivo externo; vai à direita do nome
+        mime = mimetypes.guess_type(str(photo))[0] or "image/jpeg"
+        b64 = base64.b64encode(Path(photo).read_bytes()).decode()
+        body = f"<img class='photo' alt='' src='data:{mime};base64,{b64}'>" + body
     return f"<!doctype html><html><head><meta charset='utf-8'><title>{title}</title>" \
            f"<style>{css}</style></head><body>{body}</body></html>"
 
@@ -57,11 +64,11 @@ def html_to_pdf(html: str, out: Path) -> bool:
         return False
 
 
-def render_doc(markdown_text: str, out_dir: Path, basename: str) -> Path:
+def render_doc(markdown_text: str, out_dir: Path, basename: str, photo: Path | None = None) -> Path:
     """Salva .md, .html e (se possível) .pdf. Devolve o caminho do melhor formato gerado."""
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / f"{basename}.md").write_text(markdown_text, encoding="utf-8")
-    html = to_html(markdown_text, basename)
+    html = to_html(markdown_text, basename, photo)
     html_path = out_dir / f"{basename}.html"
     html_path.write_text(html, encoding="utf-8")
     pdf_path = out_dir / f"{basename}.pdf"

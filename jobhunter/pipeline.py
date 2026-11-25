@@ -140,7 +140,7 @@ class Pipeline:
                     continue
                 out = self.data / "applications" / c.id / f"{row['id']}-{slug(row['company'])}-{slug(row['title'])}"
                 base = slug(c.name)
-                cv_path = render_doc(docs.cv_markdown, out, f"CV-{base}")
+                cv_path = render_doc(docs.cv_markdown, out, f"CV-{base}", photo=c.photo)
                 letter_path = render_doc(docs.cover_letter_markdown, out, f"Lettre-{base}")
                 (out / "audit.json").write_text(json.dumps(
                     {"changes_made": docs.changes_made, "facts_used": docs.facts_used,

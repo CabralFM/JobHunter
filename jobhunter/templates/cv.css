@@ -9,3 +9,5 @@ ul { margin: 2pt 0 4pt 14pt; padding: 0; }
 li { margin: 1pt 0; }
 a { color: #1f3b5c; text-decoration: none; }
 table { border-collapse: collapse; } td, th { padding: 1pt 6pt 1pt 0; text-align: left; }
+/* Foto opcional (profile.yaml -> photo). Circular, canto superior direito, ao lado do nome. */
+.photo { float: right; width: 30mm; height: 30mm; border-radius: 50%; object-fit: cover; margin: 0 0 4pt 8pt; }

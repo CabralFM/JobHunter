@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import TypeVar
 
 import anthropic
+import pydantic
 from pydantic import BaseModel
 
 log = logging.getLogger(__name__)
@@ -147,12 +148,25 @@ def ask(
         kwargs["betas"] = ["server-side-fallback-2026-07-01"]
         kwargs["fallbacks"] = "default"
 
-    try:
-        resp = client().beta.messages.parse(**kwargs)
-    except (anthropic.AuthenticationError, anthropic.PermissionDeniedError) as e:
-        raise FatalAPIError(f"chave da API inválida ou sem permissão: {e}") from e
-    except anthropic.BadRequestError as e:
-        raise _fatal_or_same(e) from e
+    # Uma resposta cortada (o pensamento do modelo gastou o limite de tokens) chega como JSON
+    # incompleto e o SDK levanta ValidationError antes de vermos stop_reason. Nesse caso
+    # tentamos de novo uma vez com o dobro do limite.
+    for attempt in (1, 2):
+        try:
+            resp = client().beta.messages.parse(**kwargs)
+            break
+        except (anthropic.AuthenticationError, anthropic.PermissionDeniedError) as e:
+            raise FatalAPIError(f"chave da API inválida ou sem permissão: {e}") from e
+        except anthropic.BadRequestError as e:
+            raise _fatal_or_same(e) from e
+        except pydantic.ValidationError:
+            # A chamada falhou mas foi cobrada: conta o pior caso (limite inteiro como saída).
+            _add_spend(kwargs["max_tokens"] * PRICES.get(model, PRICES["claude-opus-5-5"])[1] / 1_000_000)
+            if attempt == 2:
+                raise RuntimeError("resposta cortada duas vezes (JSON incompleto); "
+                                   "tente retailor com --model claude-sonnet-5-5")
+            log.info("resposta cortada; repetindo com max_tokens=%d", kwargs["max_tokens"] * 2)
+            kwargs["max_tokens"] *= 2
 
     if resp.stop_reason == "refusal":
         raise LLMRefused(getattr(resp.stop_details, "explanation", "refusal"))

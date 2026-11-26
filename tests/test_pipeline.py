@@ -300,3 +300,38 @@ def test_usage_limit_is_fatal():
     assert isinstance(out, llm.FatalAPIError) and "Billing" in str(out)
     other = RuntimeError("bad schema")
     assert llm._fatal_or_same(other) is other
+
+
+def test_header_status_line_per_country():
+    from types import SimpleNamespace
+    from jobhunter.tailor import header_status_line
+    cand = SimpleNamespace(profile={"cv_header_status": {"CH": "Nationalité portugaise UE",
+                                                         "LU": "Portuguese national (EU)"}})
+    assert header_status_line({"country": "CH"}, cand).endswith("Nationalité portugaise UE")
+    assert header_status_line({"country": "LU"}, cand).endswith("Portuguese national (EU)")
+    assert header_status_line({"country": "CH"}, SimpleNamespace(profile={})) == ""
+
+
+def test_truncated_json_retries_with_more_tokens(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    import pydantic
+    from jobhunter import llm
+
+    class Out(pydantic.BaseModel):
+        x: int
+
+    calls = []
+
+    def fake_parse(**kw):
+        calls.append(kw["max_tokens"])
+        if len(calls) == 1:
+            Out.model_validate_json('{"x": ')          # levanta ValidationError (JSON cortado)
+        return SimpleNamespace(stop_reason="end_turn", parsed_output=Out(x=1),
+                               usage=SimpleNamespace(input_tokens=10, output_tokens=10))
+
+    fake = SimpleNamespace(beta=SimpleNamespace(messages=SimpleNamespace(parse=fake_parse)))
+    monkeypatch.setattr(llm, "client", lambda: fake)
+    llm.set_budget(tmp_path, None)
+    out = llm.ask(system="s", user="u", schema=Out,
+                  step_cfg={"model": "claude-haiku-5-5"}, max_tokens=1000)
+    assert out.x == 1 and calls == [1000, 2000]

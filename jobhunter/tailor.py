@@ -25,9 +25,8 @@ from .models import MatchAssessment, TailoredDocs
 LANG_NAME = {"fr": "français", "en": "English", "de": "Deutsch"}
 
 CONVENTIONS = """Convenções do mercado (aplique conforme o país da vaga):
-- Suíça: CV de 2 páginas no máximo; cabeçalho com nacionalidade e tipo de permis de travail
-  (ou "UE/AELE – libre circulation" / "permis B/C/G"), idiomas com nível CECR (A1–C2), taxa de
-  ocupação disponível (SÓ na Suíça). Foto é comum mas opcional (não gere foto). Datas no formato MM.AAAA.
+- Suíça: CV de 2 páginas no máximo; cabeçalho com nacionalidade/autorização de trabalho
+  (se o pedido trouxer "Linha de status do cabeçalho", use SÓ ela), idiomas com nível CECR (A1–C2). Foto é comum mas opcional (não gere foto). Datas no formato MM.AAAA.
   "Lettre de motivation" formal: local e data no topo direito, "Madame, Monsieur," se não houver
   nome, 3–4 parágrafos (vous → moi → nous → conclusão), fecho "Je vous prie d'agréer, Madame,
   Monsieur, mes salutations distinguées."
@@ -61,6 +60,10 @@ Regras inegociáveis:
 8. Mobilidade/relocalização: use EXATAMENTE a frase "Mobilidade para esta vaga" indicada no
    pedido (traduzida para o idioma do documento), no CV e na carta. Nunca diga a um empregador
    que outro país é a sua prioridade (ex.: numa vaga em Luxemburgo não fale da Suíça romanda).
+10. Cabeçalho: se o pedido trouxer "Linha de status do cabeçalho", a linha de localização do
+   CV é "<cidade> – <frase de mobilidade> | <linha de status>", com a linha de status EXATAMENTE
+   como indicada. NÃO acrescente ALCP, libre circulation, permis, taxa de ocupação (80–100%)
+   nem nada além disso.
 9. Lacunas reais: NUNCA mencioná-las, nem no CV nem na carta (nada de "ainda não trabalhei
    com X", "estou aprendendo X", "ramping up on X"). A carta fala só do que o candidato tem e
    faz; o que falta simplesmente não aparece. (Continua proibido inventar o que falta.)
@@ -123,6 +126,18 @@ def documents_language(job_row, cand: Candidate) -> str:
     return policy if policy in LANG_NAME else job_lang
 
 
+def _per_country(value, country: str) -> str:
+    if isinstance(value, dict):
+        return value.get(country) or value.get("default") or next(iter(value.values()), "")
+    return value or ""
+
+
+def header_status_line(job_row, cand: Candidate) -> str:
+    """Linha fixa de nacionalidade no cabeçalho (profile.yaml: cv_header_status, texto ou por país)."""
+    status = _per_country(cand.profile.get("cv_header_status"), job_row["country"])
+    return f"\nLinha de status do cabeçalho: {status}" if status else ""
+
+
 def mobility_for(job_row, cand: Candidate) -> str:
     """Frase de mobilidade para o país da vaga.
 
@@ -150,7 +165,7 @@ def tailor(job_row, cand: Candidate, assessment: MatchAssessment, step_cfg: dict
     return ask(
         system=system,
         user=f"""Adapte o CV e escreva a carta para esta vaga. Idioma: {LANG_NAME[lang]}.
-Mobilidade para esta vaga: {mobility_for(job_row, cand)}
+Mobilidade para esta vaga: {mobility_for(job_row, cand)}{header_status_line(job_row, cand)}
 
 ## Análise de aderência já feita
 - Lacunas resolvíveis com reescrita: {assessment.gaps_fixable_by_tailoring}
@@ -165,7 +180,7 @@ Local: {job_row['location']} ({job_row['country']})
 {(job_row['description'] or '')[:20000]}""",
         schema=TailoredDocs,
         step_cfg=step_cfg,
-        max_tokens=16000,
+        max_tokens=24000,
     )
 
 

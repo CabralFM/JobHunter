@@ -143,6 +143,10 @@ def ask(
         messages=[{"role": "user", "content": user}],
         output_format=schema,
         output_config={"effort": step_cfg.get("effort", "medium")},
+        # Com max_tokens alto o SDK recusa a chamada sem streaming ("may take longer than
+        # 10 minutes"). Um timeout explícito desliga essa checagem; na prática o Haiku
+        # responde em ~1 minuto.
+        timeout=900,
     )
     if step_cfg.get("fallbacks", True) and not model.startswith("claude-haiku"):
         kwargs["betas"] = ["server-side-fallback-2026-07-01"]

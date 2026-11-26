@@ -323,6 +323,7 @@ def test_truncated_json_retries_with_more_tokens(tmp_path, monkeypatch):
     calls = []
 
     def fake_parse(**kw):
+        assert kw.get("timeout")                      # sem isso o SDK recusa max_tokens alto
         calls.append(kw["max_tokens"])
         if len(calls) == 1:
             Out.model_validate_json('{"x": ')          # levanta ValidationError (JSON cortado)

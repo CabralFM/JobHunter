@@ -60,6 +60,8 @@ Regras inegociáveis:
 8. Mobilidade/relocalização: use EXATAMENTE a frase "Mobilidade para esta vaga" indicada no
    pedido (traduzida para o idioma do documento), no CV e na carta. Nunca diga a um empregador
    que outro país é a sua prioridade (ex.: numa vaga em Luxemburgo não fale da Suíça romanda).
+   Não acrescente nada à frase (nem "immédiate", nem região preferida como "priorité Suisse
+   romande"): as preferências de região do profile.yaml são só para a busca, não para o texto.
 10. Cabeçalho: se o pedido trouxer "Linha de status do cabeçalho", a linha de localização do
    CV é "<cidade> – <frase de mobilidade> | <linha de status>", com a linha de status EXATAMENTE
    como indicada. NÃO acrescente ALCP, libre circulation, permis, taxa de ocupação (80–100%)

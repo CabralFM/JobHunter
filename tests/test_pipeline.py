@@ -305,10 +305,10 @@ def test_usage_limit_is_fatal():
 def test_header_status_line_per_country():
     from types import SimpleNamespace
     from jobhunter.tailor import header_status_line
-    cand = SimpleNamespace(profile={"cv_header_status": {"CH": "Nationalité portugaise UE",
-                                                         "LU": "Portuguese national (EU)"}})
-    assert header_status_line({"country": "CH"}, cand).endswith("Nationalité portugaise UE")
-    assert header_status_line({"country": "LU"}, cand).endswith("Portuguese national (EU)")
+    cand = SimpleNamespace(profile={"cv_header_status": {"CH": "Nationalité UE",
+                                                         "LU": "EU nationality"}})
+    assert header_status_line({"country": "CH"}, cand).endswith("Nationalité UE")
+    assert header_status_line({"country": "LU"}, cand).endswith("EU nationality")
     assert header_status_line({"country": "CH"}, SimpleNamespace(profile={})) == ""
 
 

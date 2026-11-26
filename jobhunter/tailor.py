@@ -63,7 +63,9 @@ Regras inegociáveis:
 10. Cabeçalho: se o pedido trouxer "Linha de status do cabeçalho", a linha de localização do
    CV é "<cidade> – <frase de mobilidade> | <linha de status>", com a linha de status EXATAMENTE
    como indicada. NÃO acrescente ALCP, libre circulation, permis, taxa de ocupação (80–100%)
-   nem nada além disso.
+   nem nada além disso. NÃO cite a nacionalidade específica (ex.: "portugaise", "Portuguese")
+   em nenhum lugar do CV nem da carta: só o que a linha de status diz. (Idiomas, como
+   "Portugais : C2", continuam normais.)
 9. Lacunas reais: NUNCA mencioná-las, nem no CV nem na carta (nada de "ainda não trabalhei
    com X", "estou aprendendo X", "ramping up on X"). A carta fala só do que o candidato tem e
    faz; o que falta simplesmente não aparece. (Continua proibido inventar o que falta.)
